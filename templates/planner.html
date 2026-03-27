@@ -3,32 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  /* reMarkable 2 native: 1404x1872px @ 226dpi = 157.8x209.6mm */
-  @page {
-    size: 157.8mm 209.6mm;
-    margin: 0;
-  }
+  /* A4 — reMarkable 2 renders A4 full-screen at a readable size */
+  @page { size: 210mm 297mm; margin: 0; }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    width: 157.8mm;
-    height: 209.6mm;
+    width: 210mm;
+    height: 297mm;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    font-size: 6pt;
+    font-size: 9pt;
     color: #1a1a1a;
     background: #ffffff;
     overflow: hidden;
     position: relative;
   }
 
-  /* ── Dot grid background ── */
   body::before {
     content: '';
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(circle, #cccccc 0.5px, transparent 0.5px);
-    background-size: 3.5mm 3.5mm;
+    background-image: radial-gradient(circle, #cccccc 0.6px, transparent 0.6px);
+    background-size: 5mm 5mm;
     z-index: 0;
     pointer-events: none;
   }
@@ -40,13 +36,16 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    padding: 4mm;
+    gap: 3mm;
   }
 
   /* ── HEADER ── */
   .header {
-    height: 14mm;
+    height: 22mm;
     background: #f5f5f5;
-    border-bottom: 0.3pt solid #cccccc;
+    border: 0.3pt solid #cccccc;
+    border-radius: 1.5px;
     display: flex;
     align-items: stretch;
     flex-shrink: 0;
@@ -57,90 +56,75 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0 3mm;
+    padding: 0 5mm;
   }
 
   .header-day {
-    font-size: 5pt;
+    font-size: 7pt;
     font-weight: 400;
     color: #888888;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    margin-bottom: 0.5mm;
+    margin-bottom: 1mm;
   }
 
   .header-date-big {
-    font-size: 12pt;
+    font-size: 18pt;
     font-weight: 500;
     color: #1a1a1a;
     line-height: 1;
   }
 
   .header-intention {
-    flex: 1;
+    flex: 1.2;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     align-items: center;
-    padding-bottom: 2mm;
+    padding-bottom: 3mm;
+    border-left: 0.3pt solid #dddddd;
+    border-right: 0.3pt solid #dddddd;
   }
 
   .header-intention-label {
-    font-size: 5pt;
-    color: #aaaaaa;
+    font-size: 7pt;
+    color: #bbbbbb;
     font-style: italic;
-    margin-bottom: 1mm;
+    margin-bottom: 2mm;
   }
 
   .header-intention-line {
     width: 80%;
-    border-bottom: 0.3pt dashed #cccccc;
+    border-bottom: 0.4pt dashed #cccccc;
   }
 
   .header-weather {
-    width: 36mm;
-    border-left: 0.3pt solid #dddddd;
+    width: 42mm;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 2mm;
-    padding: 0 2.5mm;
+    gap: 3mm;
+    padding: 0 4mm;
   }
 
-  .weather-icon {
-    font-size: 14pt;
-    line-height: 1;
-  }
+  .weather-icon { font-size: 18pt; line-height: 1; }
 
-  .weather-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5mm;
-  }
+  .weather-info { display: flex; flex-direction: column; gap: 1mm; }
 
-  .weather-condition {
-    font-size: 5pt;
-    color: #666666;
-  }
+  .weather-condition { font-size: 7pt; color: #666666; }
 
   .weather-temps {
-    font-size: 7pt;
+    font-size: 13pt;
     font-weight: 500;
     color: #1a1a1a;
-    display: flex;
-    align-items: baseline;
-    gap: 1mm;
   }
 
-  .weather-low {
-    color: #378ADD;
-    font-size: 6.5pt;
-  }
+  .weather-low { color: #378ADD; font-size: 10pt; }
 
-  .weather-sep {
-    color: #aaaaaa;
-    font-weight: 400;
+  .week-num {
     font-size: 6pt;
+    color: #bbbbbb;
+    margin-top: 1mm;
   }
 
   /* ── COLUMNS ── */
@@ -148,27 +132,29 @@
     flex: 1;
     display: flex;
     min-height: 0;
+    border: 0.3pt solid #cccccc;
+    border-radius: 1.5px;
+    overflow: hidden;
   }
 
-  /* ── SCHEDULE COLUMN ── */
   .col-schedule {
     width: 40%;
     border-right: 0.3pt dashed #cccccc;
     display: flex;
     flex-direction: column;
-    padding: 2mm 0 0 0;
     overflow: hidden;
   }
 
   .col-header {
-    font-size: 4.5pt;
+    font-size: 6.5pt;
     font-weight: 500;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: #888888;
-    padding: 0 3mm 1mm 3mm;
+    padding: 2mm 3mm 1.5mm;
     border-bottom: 0.3pt solid #dddddd;
-    margin-bottom: 0;
+    flex-shrink: 0;
+    background: #fafafa;
   }
 
   .schedule-body {
@@ -186,10 +172,10 @@
   }
 
   .time-label {
-    width: 7mm;
-    padding-top: 0.4mm;
+    width: 9mm;
+    padding-top: 0.5mm;
     padding-left: 2mm;
-    font-size: 4.5pt;
+    font-size: 6.5pt;
     color: #aaaaaa;
     flex-shrink: 0;
     line-height: 1;
@@ -203,198 +189,144 @@
 
   .time-half-line {
     position: absolute;
-    left: 7mm;
+    left: 9mm;
     right: 2mm;
-    border-top: 0.2pt dashed #e5e5e5;
+    border-top: 0.2pt dashed #eeeeee;
   }
 
-  /* Calendar event blocks */
   .cal-event {
     position: absolute;
-    left: 7.5mm;
+    left: 9.5mm;
     right: 2mm;
     border-radius: 1px;
-    padding: 0.8mm 1.2mm;
+    padding: 1mm 1.5mm;
     overflow: hidden;
   }
 
-  .cal-event.blue {
-    background: #E6F1FB;
-    border-left: 1.5pt solid #378ADD;
-  }
-
-  .cal-event.green {
-    background: #E1F5EE;
-    border-left: 1.5pt solid #1D9E75;
-  }
-
-  .cal-event.amber {
-    background: #FAEEDA;
-    border-left: 1.5pt solid #EF9F27;
-  }
-
-  .cal-event.gray {
-    background: #f0f0f0;
-    border-left: 1.5pt solid #888888;
-  }
+  .cal-event.cal-blue  { background: #E6F1FB; border-left: 2pt solid #378ADD; }
+  .cal-event.cal-green { background: #E1F5EE; border-left: 2pt solid #1D9E75; }
+  .cal-event.cal-amber { background: #FAEEDA; border-left: 2pt solid #EF9F27; }
 
   .cal-event-title {
-    font-size: 4.5pt;
+    font-size: 7pt;
     font-weight: 500;
     color: #1a1a1a;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    line-height: 1.2;
   }
 
-  .cal-event-time {
-    font-size: 4pt;
-    color: #666666;
-    line-height: 1.2;
-  }
+  .cal-event-time { font-size: 6pt; color: #666666; }
 
-  /* ── TODO COLUMN ── */
+  /* ── TODO ── */
   .col-todo {
     width: 34%;
     border-right: 0.3pt dashed #cccccc;
     display: flex;
     flex-direction: column;
-    padding: 2mm 0 0 0;
     overflow: hidden;
   }
 
+  .todo-body { flex: 1; padding: 2mm 3mm; overflow: hidden; }
+
   .todo-section-label {
-    font-size: 4pt;
-    color: #aaaaaa;
+    font-size: 6pt;
+    color: #bbbbbb;
     font-style: italic;
-    padding: 1.5mm 2.5mm 1mm 2.5mm;
+    margin-bottom: 1.5mm;
+    margin-top: 1mm;
   }
 
   .todo-item {
     display: flex;
     align-items: flex-start;
-    padding: 0.8mm 2.5mm;
-    gap: 1.5mm;
+    margin-bottom: 2mm;
+    gap: 2mm;
   }
 
   .todo-checkbox {
-    width: 2.8mm;
-    height: 2.8mm;
-    border: 0.4pt solid #888888;
+    width: 3.5mm;
+    height: 3.5mm;
+    border: 0.5pt solid #888888;
     border-radius: 0.5px;
     flex-shrink: 0;
     margin-top: 0.3mm;
   }
 
-  .todo-checkbox.checked {
-    border-color: #cccccc;
-    position: relative;
-  }
-
-  .todo-checkbox.checked::after {
-    content: '✓';
-    position: absolute;
-    font-size: 3pt;
-    color: #888888;
-    top: -0.3mm;
-    left: 0.2mm;
-  }
-
-  .todo-text {
-    font-size: 5pt;
-    color: #1a1a1a;
-    line-height: 1.4;
-  }
-
-  .todo-text.done {
-    color: #aaaaaa;
-    text-decoration: line-through;
-  }
+  .todo-text { font-size: 8pt; color: #1a1a1a; line-height: 1.3; }
+  .todo-text.done { color: #aaaaaa; text-decoration: line-through; }
 
   .todo-blank {
     display: flex;
     align-items: center;
-    padding: 0.8mm 2.5mm;
-    gap: 1.5mm;
+    margin-bottom: 2mm;
+    gap: 2mm;
+  }
+
+  .todo-blank-box {
+    width: 3.5mm;
+    height: 3.5mm;
+    border: 0.3pt solid #dddddd;
+    border-radius: 0.5px;
+    flex-shrink: 0;
   }
 
   .todo-blank-line {
     flex: 1;
-    border-bottom: 0.2pt dashed #e0e0e0;
-    height: 2.8mm;
+    border-bottom: 0.25pt dashed #e0e0e0;
   }
 
-  .todo-divider {
-    border-top: 0.2pt dashed #dddddd;
-    margin: 1mm 2.5mm;
-  }
+  .todo-divider { border-top: 0.2pt dashed #dddddd; margin: 2mm 0; }
 
-  /* Habits section */
   .habits-section {
-    margin-top: auto;
     border-top: 0.3pt solid #dddddd;
-    padding: 1.5mm 0 0 0;
-  }
-
-  .habits-grid {
-    padding: 0 2.5mm;
+    padding: 0;
   }
 
   .habit-row {
     display: flex;
     align-items: center;
-    padding: 0.8mm 0;
-    gap: 1.5mm;
+    padding: 1.2mm 3mm;
+    gap: 2mm;
+    border-bottom: 0.2pt solid #f0f0f0;
   }
 
-  .habit-name {
-    font-size: 4.5pt;
-    color: #444444;
-    width: 12mm;
-    flex-shrink: 0;
-  }
+  .habit-name { font-size: 7pt; color: #444444; width: 14mm; flex-shrink: 0; }
 
-  .habit-dots {
-    display: flex;
-    gap: 1mm;
-  }
+  .habit-dots { display: flex; gap: 1.5mm; }
 
   .habit-dot {
-    width: 2.8mm;
-    height: 2.8mm;
+    width: 3.5mm;
+    height: 3.5mm;
     border-radius: 50%;
     border: 0.4pt solid #cccccc;
   }
 
-  /* ── NOTES COLUMN ── */
+  /* ── NOTES ── */
   .col-notes {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 2mm 0 0 0;
     overflow: hidden;
   }
 
   .notes-body {
     flex: 1;
-    padding: 1mm 2.5mm 0 2.5mm;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
+    padding: 2mm 3mm 0;
+    overflow: hidden;
   }
 
   .note-line {
     display: flex;
     align-items: center;
-    gap: 1.5mm;
-    padding: 1.4mm 0;
-    border-bottom: 0.2pt solid #e8e8e8;
+    gap: 2mm;
+    padding: 1.8mm 0;
+    border-bottom: 0.25pt solid #e8e8e8;
   }
 
   .note-bullet {
-    width: 1.2mm;
-    height: 1.2mm;
+    width: 1.5mm;
+    height: 1.5mm;
     border-radius: 50%;
     background: #cccccc;
     flex-shrink: 0;
@@ -402,95 +334,84 @@
 
   /* ── FOOTER ── */
   .footer {
-    height: 14.5mm;
-    border-top: 0.3pt solid #cccccc;
+    height: 18mm;
+    border: 0.3pt solid #cccccc;
+    border-radius: 1.5px;
     background: #fafafa;
-    padding: 1.5mm 3mm 1mm 3mm;
+    padding: 2mm 4mm;
     display: flex;
     flex-direction: column;
-    gap: 1.5mm;
+    gap: 2mm;
     flex-shrink: 0;
   }
 
   .footer-label {
-    font-size: 4.5pt;
+    font-size: 6.5pt;
     font-weight: 500;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: #888888;
     border-bottom: 0.3pt solid #dddddd;
-    padding-bottom: 1mm;
+    padding-bottom: 1.5mm;
   }
 
-  .footer-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 1.8mm;
-  }
+  .footer-rows { display: flex; flex-direction: column; gap: 2.5mm; }
 
-  .footer-row {
-    display: flex;
-    align-items: baseline;
-    gap: 1.5mm;
-  }
+  .footer-row { display: flex; align-items: baseline; gap: 2mm; }
 
-  .footer-prompt {
-    font-size: 4.5pt;
-    color: #aaaaaa;
-    font-style: italic;
-    white-space: nowrap;
-  }
+  .footer-prompt { font-size: 7pt; color: #aaaaaa; font-style: italic; white-space: nowrap; }
 
-  .footer-line {
-    flex: 1;
-    border-bottom: 0.25pt solid #dddddd;
-  }
+  .footer-line { flex: 1; border-bottom: 0.3pt solid #dddddd; }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- ── HEADER ── -->
+  <!-- HEADER -->
   <div class="header">
     <div class="header-date">
-      <div class="header-day">{{ day_of_week }}</div>
-      <div class="header-date-big">{{ date_formatted }}</div>
+      <div class="header-day">{{ day_name }}</div>
+      <div class="header-date-big">{{ date_full }}</div>
     </div>
     <div class="header-intention">
       <div class="header-intention-label">intention for the day</div>
       <div class="header-intention-line"></div>
     </div>
     <div class="header-weather">
-      <div class="weather-icon">{{ weather_icon }}</div>
+      {% if weather_condition %}
+      <div class="weather-icon">{{ weather_symbols.get(weather_condition, "◌") }}</div>
       <div class="weather-info">
-        <div class="weather-condition">{{ weather_condition }}</div>
-        <div class="weather-temps">
-          {{ weather_high }}°
-          <span class="weather-sep">/</span>
-          <span class="weather-low">{{ weather_low }}°</span>
-        </div>
+        <div class="weather-condition">{{ weather_labels.get(weather_condition, weather_condition) }}</div>
+        <div class="weather-temps">{{ weather_high }}° / <span class="weather-low">{{ weather_low }}°</span></div>
+        <div class="week-num">week {{ week_number }}</div>
       </div>
+      {% else %}
+      <div class="week-num">week {{ week_number }}</div>
+      {% endif %}
     </div>
   </div>
 
-  <!-- ── COLUMNS ── -->
+  <!-- COLUMNS -->
   <div class="columns">
 
     <!-- Schedule -->
     <div class="col-schedule">
       <div class="col-header">Schedule</div>
-      <div class="schedule-body" id="schedule-body">
-        {% for slot in time_slots %}
-        <div class="time-slot" style="top: {{ slot.top_pct }}%; height: {{ slot.height_pct }}%;">
-          <div class="time-label">{{ slot.label }}</div>
+      <div class="schedule-body">
+        {% for hour in range(7, 20) %}
+        {% set slot_h   = 1 / 13 * 100 %}
+        {% set top      = (hour - 7) / 13 * 100 %}
+        {% set half_top = (hour - 7) / 13 * 100 + slot_h / 2 %}
+        <div class="time-slot" style="top: {{ '%.2f' % top }}%; height: {{ '%.2f' % slot_h }}%;">
+          <div class="time-label">{% if hour < 12 %}{{ hour }}a{% elif hour == 12 %}12p{% else %}{{ hour - 12 }}p{% endif %}</div>
           <div class="time-line"></div>
         </div>
-        <div class="time-half-line" style="top: {{ slot.half_pct }}%;"></div>
+        <div class="time-half-line" style="top: {{ '%.2f' % half_top }}%;"></div>
         {% endfor %}
-        {% for event in calendar_events %}
-        <div class="cal-event {{ event.color }}" style="top: {{ event.top_pct }}%; height: {{ event.height_pct }}%;">
-          <div class="cal-event-title">{{ event.title }}</div>
-          <div class="cal-event-time">{{ event.time_label }}</div>
+        {% for ev in calendar_events %}
+        <div class="cal-event {{ ev.color }}" style="top: {{ ev.top_pct }}%; height: {{ ev.height_pct }}%;">
+          <div class="cal-event-title">{{ ev.title }}</div>
+          <div class="cal-event-time">{{ ev.time_label }}</div>
         </div>
         {% endfor %}
       </div>
@@ -499,49 +420,47 @@
     <!-- Todo -->
     <div class="col-todo">
       <div class="col-header">To Do</div>
-      <div class="todo-section-label">— priority</div>
-      {% for item in todo_priority %}
-      <div class="todo-item">
-        <div class="todo-checkbox {{ 'checked' if item.done else '' }}"></div>
-        <div class="todo-text {{ 'done' if item.done else '' }}">{{ item.text }}</div>
-      </div>
-      {% endfor %}
-      {% for i in range(priority_blanks) %}
-      <div class="todo-blank">
-        <div class="todo-checkbox"></div>
-        <div class="todo-blank-line"></div>
-      </div>
-      {% endfor %}
+      <div class="todo-body">
+        <div class="todo-section-label">— priority</div>
+        {% for item in todo_priority %}
+        <div class="todo-item">
+          <div class="todo-checkbox {% if item.done %}checked{% endif %}"></div>
+          <div class="todo-text {% if item.done %}done{% endif %}">{{ item.text }}</div>
+        </div>
+        {% endfor %}
+        {% for i in range(priority_blanks) %}
+        <div class="todo-blank">
+          <div class="todo-blank-box"></div>
+          <div class="todo-blank-line"></div>
+        </div>
+        {% endfor %}
 
-      <div class="todo-divider"></div>
-      <div class="todo-section-label">— later</div>
-      {% for item in todo_later %}
-      <div class="todo-item">
-        <div class="todo-checkbox {{ 'checked' if item.done else '' }}"></div>
-        <div class="todo-text {{ 'done' if item.done else '' }}">{{ item.text }}</div>
+        <div class="todo-divider"></div>
+        <div class="todo-section-label">— later</div>
+        {% for item in todo_later %}
+        <div class="todo-item">
+          <div class="todo-checkbox {% if item.done %}checked{% endif %}"></div>
+          <div class="todo-text {% if item.done %}done{% endif %}">{{ item.text }}</div>
+        </div>
+        {% endfor %}
+        {% for i in range(later_blanks) %}
+        <div class="todo-blank">
+          <div class="todo-blank-box"></div>
+          <div class="todo-blank-line"></div>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
-      {% for i in range(later_blanks) %}
-      <div class="todo-blank">
-        <div class="todo-checkbox"></div>
-        <div class="todo-blank-line"></div>
-      </div>
-      {% endfor %}
 
       <div class="habits-section">
         <div class="col-header">Habits</div>
-        <div class="habits-grid">
-          {% for habit in habits %}
-          <div class="habit-row">
-            <div class="habit-name">{{ habit }}</div>
-            <div class="habit-dots">
-              {% for i in range(7) %}
-              <div class="habit-dot"></div>
-              {% endfor %}
-            </div>
+        {% for habit in ["Exercise", "Read", "Meditate", "Water", "Sleep"] %}
+        <div class="habit-row">
+          <div class="habit-name">{{ habit }}</div>
+          <div class="habit-dots">
+            {% for d in range(7) %}<div class="habit-dot"></div>{% endfor %}
           </div>
-          {% endfor %}
         </div>
+        {% endfor %}
       </div>
     </div>
 
@@ -549,17 +468,15 @@
     <div class="col-notes">
       <div class="col-header">Notes</div>
       <div class="notes-body">
-        {% for i in range(38) %}
-        <div class="note-line">
-          <div class="note-bullet"></div>
-        </div>
+        {% for i in range(36) %}
+        <div class="note-line"><div class="note-bullet"></div></div>
         {% endfor %}
       </div>
     </div>
 
   </div>
 
-  <!-- ── FOOTER ── -->
+  <!-- FOOTER -->
   <div class="footer">
     <div class="footer-label">End of Day</div>
     <div class="footer-rows">
