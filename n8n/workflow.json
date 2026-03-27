@@ -11,57 +11,60 @@
       "name": "Every day at 6am",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 300]
+      "position": [0, 380]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "http://homeassistant.home:8123/api/states/sensor.weather_forecast_today_condition",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
+        "resource": "state",
+        "operation": "get",
+        "entityId": "sensor.weather_forecast_today_condition"
       },
       "id": "ha-condition",
       "name": "HA: Weather Condition",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [220, 160],
+      "type": "n8n-nodes-base.homeAssistant",
+      "typeVersion": 1,
+      "position": [220, 380],
       "credentials": {
-        "httpHeaderAuth": { "id": "ha-token", "name": "Home Assistant Token" }
+        "homeAssistantApi": {
+          "id": "ha-creds",
+          "name": "Home Assistant account"
+        }
       }
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "http://homeassistant.home:8123/api/states/sensor.weather_forecast_today_high",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
+        "resource": "state",
+        "operation": "get",
+        "entityId": "sensor.weather_forecast_today_high"
       },
       "id": "ha-high",
       "name": "HA: Weather High",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [220, 300],
+      "type": "n8n-nodes-base.homeAssistant",
+      "typeVersion": 1,
+      "position": [440, 380],
       "credentials": {
-        "httpHeaderAuth": { "id": "ha-token", "name": "Home Assistant Token" }
+        "homeAssistantApi": {
+          "id": "ha-creds",
+          "name": "Home Assistant account"
+        }
       }
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "http://homeassistant.home:8123/api/states/sensor.weather_forecast_today_low",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
+        "resource": "state",
+        "operation": "get",
+        "entityId": "sensor.weather_forecast_today_low"
       },
       "id": "ha-low",
       "name": "HA: Weather Low",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [220, 440],
+      "type": "n8n-nodes-base.homeAssistant",
+      "typeVersion": 1,
+      "position": [660, 380],
       "credentials": {
-        "httpHeaderAuth": { "id": "ha-token", "name": "Home Assistant Token" }
+        "homeAssistantApi": {
+          "id": "ha-creds",
+          "name": "Home Assistant account"
+        }
       }
     },
     {
@@ -77,9 +80,12 @@
       "name": "Google Calendar: Today",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
-      "position": [220, 580],
+      "position": [880, 380],
       "credentials": {
-        "googleCalendarOAuth2Api": { "id": "gcal-creds", "name": "Google Calendar" }
+        "googleCalendarOAuth2Api": {
+          "id": "gcal-creds",
+          "name": "Google Calendar account"
+        }
       }
     },
     {
@@ -90,7 +96,7 @@
       "name": "Build Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 370]
+      "position": [1100, 380]
     },
     {
       "parameters": {
@@ -109,7 +115,7 @@
       "name": "Generate PDF",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 370]
+      "position": [1320, 380]
     },
     {
       "parameters": {
@@ -137,7 +143,7 @@
       "name": "Upload to reMarkable",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 370]
+      "position": [1540, 380]
     },
     {
       "parameters": {
@@ -149,7 +155,7 @@
       "name": "Check Result",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1120, 370]
+      "position": [1760, 380]
     },
     {
       "parameters": {
@@ -159,7 +165,7 @@
       "name": "Success",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 280]
+      "position": [1980, 280]
     },
     {
       "parameters": {
@@ -169,25 +175,18 @@
       "name": "Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 460]
+      "position": [1980, 480]
     }
   ],
   "connections": {
-    "Every day at 6am": {
-      "main": [[
-        { "node": "HA: Weather Condition", "type": "main", "index": 0 },
-        { "node": "HA: Weather High",      "type": "main", "index": 0 },
-        { "node": "HA: Weather Low",       "type": "main", "index": 0 },
-        { "node": "Google Calendar: Today","type": "main", "index": 0 }
-      ]]
-    },
-    "HA: Weather Condition": { "main": [[{ "node": "Build Payload", "type": "main", "index": 0 }]] },
-    "HA: Weather High":      { "main": [[{ "node": "Build Payload", "type": "main", "index": 0 }]] },
-    "HA: Weather Low":       { "main": [[{ "node": "Build Payload", "type": "main", "index": 0 }]] },
-    "Google Calendar: Today":{ "main": [[{ "node": "Build Payload", "type": "main", "index": 0 }]] },
-    "Build Payload":         { "main": [[{ "node": "Generate PDF",  "type": "main", "index": 0 }]] },
-    "Generate PDF":          { "main": [[{ "node": "Upload to reMarkable", "type": "main", "index": 0 }]] },
-    "Upload to reMarkable":  { "main": [[{ "node": "Check Result", "type": "main", "index": 0 }]] },
+    "Every day at 6am":      { "main": [[{ "node": "HA: Weather Condition", "type": "main", "index": 0 }]] },
+    "HA: Weather Condition": { "main": [[{ "node": "HA: Weather High",      "type": "main", "index": 0 }]] },
+    "HA: Weather High":      { "main": [[{ "node": "HA: Weather Low",       "type": "main", "index": 0 }]] },
+    "HA: Weather Low":       { "main": [[{ "node": "Google Calendar: Today","type": "main", "index": 0 }]] },
+    "Google Calendar: Today":{ "main": [[{ "node": "Build Payload",         "type": "main", "index": 0 }]] },
+    "Build Payload":         { "main": [[{ "node": "Generate PDF",          "type": "main", "index": 0 }]] },
+    "Generate PDF":          { "main": [[{ "node": "Upload to reMarkable",  "type": "main", "index": 0 }]] },
+    "Upload to reMarkable":  { "main": [[{ "node": "Check Result",          "type": "main", "index": 0 }]] },
     "Check Result": {
       "main": [
         [{ "node": "Success", "type": "main", "index": 0 }],
