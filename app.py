@@ -63,6 +63,36 @@ def generate():
     data = request.get_json(force=True)
 
     today = datetime.now()
+
+    # Split todos into priority and later
+    todos         = data.get("todos", [])
+    todo_priority = [t for t in todos if t.get("priority")]
+    todo_later    = [t for t in todos if not t.get("priority")]
+
+    # Blank row padding — always at least 1, enough to fill section
+    priority_blanks = max(3 - len(todo_priority), 1)
+    later_blanks    = max(4 - len(todo_later), 1)
+
+    # Pre-process calendar events into template-ready dicts
+    calendar_events = []
+    for ev in data.get("events", []):
+        top_pct    = round(((ev["start_hour"] - 7) * 60 + ev["start_min"]) / (13 * 60) * 100, 2)
+        height_pct = round(((ev["end_hour"] - ev["start_hour"]) * 60 + (ev["end_min"] - ev["start_min"])) / (13 * 60) * 100, 2)
+        height_pct = max(height_pct, 3.5)
+
+        sh, sm = ev["start_hour"], ev["start_min"]
+        eh, em = ev["end_hour"],   ev["end_min"]
+        start_label = f"{sh if sh <= 12 else sh - 12}:{sm:02d}"
+        end_label   = f"{eh if eh <= 12 else eh - 12}:{em:02d}"
+
+        calendar_events.append({
+            "title":      ev.get("title", ""),
+            "color":      ev.get("color", "cal-blue"),
+            "top_pct":    top_pct,
+            "height_pct": height_pct,
+            "time_label": f"{start_label} – {end_label}",
+        })
+
     payload = {
         "date_full":         today.strftime("%-d %B %Y"),
         "day_name":          today.strftime("%A").upper(),
@@ -70,8 +100,11 @@ def generate():
         "weather_condition": data.get("weather_condition", ""),
         "weather_high":      data.get("weather_high", ""),
         "weather_low":       data.get("weather_low", ""),
-        "events":            data.get("events", []),
-        "todos":             data.get("todos", []),
+        "calendar_events":   calendar_events,
+        "todo_priority":     todo_priority,
+        "todo_later":        todo_later,
+        "priority_blanks":   priority_blanks,
+        "later_blanks":      later_blanks,
         "weather_symbols":   WEATHER_SYMBOLS,
         "weather_labels":    WEATHER_LABELS,
     }
