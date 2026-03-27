@@ -1,0 +1,17 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: remarkable-planner
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./clusters/apps/remarkable
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system   # your existing Flux GitRepository source
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: planner-service
+      namespace: remarkable

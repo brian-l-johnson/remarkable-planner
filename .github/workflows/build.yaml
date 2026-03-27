@@ -1,0 +1,78 @@
+name: Build & Push Images
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  pdf-generator:
+    name: PDF Generator
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    # Only run when relevant files change
+    if: |
+      contains(github.event.head_commit.modified, 'app.py') ||
+      contains(github.event.head_commit.modified, 'requirements.txt') ||
+      contains(github.event.head_commit.modified, 'Dockerfile') ||
+      contains(github.event.head_commit.modified, 'templates/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/remarkable-pdf-generator
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  rmapi-uploader:
+    name: rMAPI Uploader
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    if: |
+      contains(github.event.head_commit.modified, 'rmapi-service/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/remarkable-rmapi-uploader
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./rmapi-service
+          file: ./rmapi-service/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

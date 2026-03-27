@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rmapi-uploader
+  namespace: remarkable
+  labels:
+    app: rmapi-uploader
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rmapi-uploader
+  template:
+    metadata:
+      labels:
+        app: rmapi-uploader
+    spec:
+      containers:
+        - name: rmapi-uploader
+          # Replace YOUR_GITHUB_USERNAME with your GitHub username
+          image: ghcr.io/YOUR_GITHUB_USERNAME/remarkable-rmapi-uploader:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: RMAPI_TOKEN_PATH
+              value: /secret/rmapi-token
+            - name: REMARKABLE_FOLDER
+              value: Daily Planner
+          volumeMounts:
+            - name: rmapi-token
+              mountPath: /secret
+              readOnly: true
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 50m
+            limits:
+              memory: 256Mi
+              cpu: 200m
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: rmapi-token
+          secret:
+            secretName: rmapi-token
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rmapi-uploader
+  namespace: remarkable
+spec:
+  selector:
+    app: rmapi-uploader
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
