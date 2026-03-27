@@ -3,13 +3,6 @@ name: Build & Push Images
 on:
   push:
     branches: [main]
-    paths:
-      - 'app.py'
-      - 'Dockerfile'
-      - 'requirements.txt'
-      - 'templates/**'
-      - 'rmapi-service/**'
-  workflow_dispatch:
 
 jobs:
   pdf-generator:
@@ -18,6 +11,12 @@ jobs:
     permissions:
       contents: read
       packages: write
+    # Only run when relevant files change
+    if: |
+      contains(github.event.head_commit.modified, 'app.py') ||
+      contains(github.event.head_commit.modified, 'requirements.txt') ||
+      contains(github.event.head_commit.modified, 'Dockerfile') ||
+      contains(github.event.head_commit.modified, 'templates/')
     steps:
       - uses: actions/checkout@v4
 
@@ -41,8 +40,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=pdf-generator
-          cache-to: type=gha,mode=max,scope=pdf-generator
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   rmapi-uploader:
     name: rMAPI Uploader
@@ -50,6 +49,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    if: |
+      contains(github.event.head_commit.modified, 'rmapi-service/')
     steps:
       - uses: actions/checkout@v4
 
@@ -73,5 +74,5 @@ jobs:
           file: ./rmapi-service/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=rmapi-uploader
-          cache-to: type=gha,mode=max,scope=rmapi-uploader
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
