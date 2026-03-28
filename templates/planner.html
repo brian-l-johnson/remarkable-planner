@@ -3,19 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  /* A4 — reMarkable 2 renders A4 full-screen at a readable size */
-  @page { size: 210mm 297mm; margin: 0; }
+  /*
+   * reMarkable 2 native: 1404x1872px @ 226dpi
+   * = 447.29 x 596.39 pt MediaBox
+   * weasyprint renders at 96dpi so @page uses 157.79 x 210.39mm
+   * which produces the correct 447.29 x 596.39 pt PDF page
+   */
+  @page { size: 157.7947mm 210.3929mm; margin: 0; }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    width: 210mm;
-    height: 297mm;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    font-size: 9pt;
+    font-size: 8pt;
     color: #1a1a1a;
     background: #ffffff;
-    overflow: hidden;
     position: relative;
   }
 
@@ -23,8 +25,8 @@
     content: '';
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(circle, #cccccc 0.6px, transparent 0.6px);
-    background-size: 5mm 5mm;
+    background-image: radial-gradient(circle, #cccccc 0.5px, transparent 0.5px);
+    background-size: 3.75mm 3.75mm;
     z-index: 0;
     pointer-events: none;
   }
@@ -32,20 +34,20 @@
   .page {
     position: relative;
     z-index: 1;
-    width: 100%;
-    height: 100%;
+    width: 157.7947mm;
+    height: 210.3929mm;
     display: flex;
     flex-direction: column;
-    padding: 4mm;
-    gap: 3mm;
+    padding: 3mm;
+    gap: 2.5mm;
   }
 
   /* ── HEADER ── */
   .header {
-    height: 22mm;
+    height: 18mm;
     background: #f5f5f5;
     border: 0.3pt solid #cccccc;
-    border-radius: 1.5px;
+    border-radius: 1px;
     display: flex;
     align-items: stretch;
     flex-shrink: 0;
@@ -56,20 +58,19 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 0 5mm;
+    padding: 0 4mm;
   }
 
   .header-day {
-    font-size: 7pt;
-    font-weight: 400;
-    color: #888888;
+    font-size: 5.5pt;
+    color: #888;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin-bottom: 1mm;
   }
 
   .header-date-big {
-    font-size: 18pt;
+    font-size: 14pt;
     font-weight: 500;
     color: #1a1a1a;
     line-height: 1;
@@ -81,78 +82,71 @@
     flex-direction: column;
     justify-content: flex-end;
     align-items: center;
-    padding-bottom: 3mm;
-    border-left: 0.3pt solid #dddddd;
-    border-right: 0.3pt solid #dddddd;
+    padding-bottom: 2.5mm;
+    border-left: 0.3pt solid #ddd;
+    border-right: 0.3pt solid #ddd;
   }
 
   .header-intention-label {
-    font-size: 7pt;
-    color: #bbbbbb;
+    font-size: 5.5pt;
+    color: #bbb;
     font-style: italic;
-    margin-bottom: 2mm;
+    margin-bottom: 1.5mm;
   }
 
   .header-intention-line {
     width: 80%;
-    border-bottom: 0.4pt dashed #cccccc;
+    border-bottom: 0.4pt dashed #ccc;
   }
 
   .header-weather {
-    width: 42mm;
+    width: 34mm;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 3mm;
-    padding: 0 4mm;
+    gap: 2mm;
+    padding: 0 3mm;
   }
 
-  .weather-icon { font-size: 18pt; line-height: 1; }
+  .weather-icon { font-size: 14pt; line-height: 1; }
 
-  .weather-info { display: flex; flex-direction: column; gap: 1mm; }
+  .weather-info { display: flex; flex-direction: column; gap: 0.8mm; }
 
-  .weather-condition { font-size: 7pt; color: #666666; }
+  .weather-condition { font-size: 5.5pt; color: #666; }
 
-  .weather-temps {
-    font-size: 13pt;
-    font-weight: 500;
-    color: #1a1a1a;
-  }
+  .weather-temps { font-size: 10pt; font-weight: 500; color: #1a1a1a; }
 
-  .weather-low { color: #378ADD; font-size: 10pt; }
+  .weather-low { color: #378ADD; font-size: 8pt; }
 
-  .week-num {
-    font-size: 6pt;
-    color: #bbbbbb;
-    margin-top: 1mm;
-  }
+  .week-num { font-size: 5pt; color: #bbb; margin-top: 0.8mm; }
 
   /* ── COLUMNS ── */
   .columns {
     flex: 1;
+    width: 100%;
     display: flex;
     min-height: 0;
-    border: 0.3pt solid #cccccc;
-    border-radius: 1.5px;
+    border: 0.3pt solid #ccc;
+    border-radius: 1px;
     overflow: hidden;
   }
 
   .col-schedule {
     width: 40%;
-    border-right: 0.3pt dashed #cccccc;
+    border-right: 0.3pt dashed #ccc;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
   .col-header {
-    font-size: 6.5pt;
+    font-size: 5pt;
     font-weight: 500;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #888888;
-    padding: 2mm 3mm 1.5mm;
-    border-bottom: 0.3pt solid #dddddd;
+    color: #888;
+    padding: 1.5mm 2.5mm 1mm;
+    border-bottom: 0.3pt solid #ddd;
     flex-shrink: 0;
     background: #fafafa;
   }
@@ -172,196 +166,126 @@
   }
 
   .time-label {
-    width: 9mm;
-    padding-top: 0.5mm;
-    padding-left: 2mm;
-    font-size: 6.5pt;
-    color: #aaaaaa;
+    width: 7mm;
+    padding-top: 0.4mm;
+    padding-left: 1.5mm;
+    font-size: 5.5pt;
+    color: #aaa;
     flex-shrink: 0;
     line-height: 1;
   }
 
   .time-line {
     flex: 1;
-    border-top: 0.3pt solid #dddddd;
-    margin-right: 2mm;
+    border-top: 0.3pt solid #ddd;
+    margin-right: 1.5mm;
   }
 
   .time-half-line {
     position: absolute;
-    left: 9mm;
-    right: 2mm;
-    border-top: 0.2pt dashed #eeeeee;
+    left: 7mm;
+    right: 1.5mm;
+    border-top: 0.2pt dashed #eee;
   }
 
   .cal-event {
     position: absolute;
-    left: 9.5mm;
-    right: 2mm;
+    left: 7.5mm;
+    right: 1.5mm;
     border-radius: 1px;
-    padding: 1mm 1.5mm;
+    padding: 0.6mm 1mm;
     overflow: hidden;
   }
 
-  .cal-event.cal-blue  { background: #E6F1FB; border-left: 2pt solid #378ADD; }
-  .cal-event.cal-green { background: #E1F5EE; border-left: 2pt solid #1D9E75; }
-  .cal-event.cal-amber { background: #FAEEDA; border-left: 2pt solid #EF9F27; }
+  .cal-event.cal-blue  { background: #E6F1FB; border-left: 1.5pt solid #378ADD; }
+  .cal-event.cal-green { background: #E1F5EE; border-left: 1.5pt solid #1D9E75; }
+  .cal-event.cal-amber { background: #FAEEDA; border-left: 1.5pt solid #EF9F27; }
 
-  .cal-event-title {
-    font-size: 7pt;
-    font-weight: 500;
-    color: #1a1a1a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .cal-event-time { font-size: 6pt; color: #666666; }
+  .cal-event-title { font-size: 5.5pt; font-weight: 500; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cal-event-time  { font-size: 4.5pt; color: #666; }
 
   /* ── TODO ── */
   .col-todo {
     width: 34%;
-    border-right: 0.3pt dashed #cccccc;
+    border-right: 0.3pt dashed #ccc;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
-  .todo-body { flex: 1; padding: 2mm 3mm; overflow: hidden; }
+  .todo-body { flex: 1; padding: 1.5mm 2mm; overflow: hidden; }
 
-  .todo-section-label {
-    font-size: 6pt;
-    color: #bbbbbb;
-    font-style: italic;
-    margin-bottom: 1.5mm;
-    margin-top: 1mm;
-  }
+  .todo-section-label { font-size: 5pt; color: #bbb; font-style: italic; margin-bottom: 1mm; margin-top: 0.8mm; }
 
-  .todo-item {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 2mm;
-    gap: 2mm;
-  }
+  .todo-item { display: flex; align-items: flex-start; margin-bottom: 1.5mm; gap: 1.5mm; }
 
   .todo-checkbox {
-    width: 3.5mm;
-    height: 3.5mm;
-    border: 0.5pt solid #888888;
+    width: 2.8mm;
+    height: 2.8mm;
+    border: 0.4pt solid #888;
     border-radius: 0.5px;
     flex-shrink: 0;
-    margin-top: 0.3mm;
+    margin-top: 0.2mm;
   }
 
-  .todo-text { font-size: 8pt; color: #1a1a1a; line-height: 1.3; }
-  .todo-text.done { color: #aaaaaa; text-decoration: line-through; }
+  .todo-text { font-size: 6.5pt; color: #1a1a1a; line-height: 1.3; }
+  .todo-text.done { color: #aaa; text-decoration: line-through; }
 
-  .todo-blank {
-    display: flex;
-    align-items: center;
-    margin-bottom: 2mm;
-    gap: 2mm;
-  }
+  .todo-blank { display: flex; align-items: center; margin-bottom: 1.5mm; gap: 1.5mm; }
 
   .todo-blank-box {
-    width: 3.5mm;
-    height: 3.5mm;
-    border: 0.3pt solid #dddddd;
+    width: 2.8mm;
+    height: 2.8mm;
+    border: 0.3pt solid #ddd;
     border-radius: 0.5px;
     flex-shrink: 0;
   }
 
-  .todo-blank-line {
-    flex: 1;
-    border-bottom: 0.25pt dashed #e0e0e0;
-  }
+  .todo-blank-line { flex: 1; border-bottom: 0.2pt dashed #e0e0e0; }
 
-  .todo-divider { border-top: 0.2pt dashed #dddddd; margin: 2mm 0; }
+  .todo-divider { border-top: 0.2pt dashed #ddd; margin: 1.5mm 0; }
 
-  .habits-section {
-    border-top: 0.3pt solid #dddddd;
-    padding: 0;
-  }
+  .habits-section { border-top: 0.3pt solid #ddd; }
 
-  .habit-row {
-    display: flex;
-    align-items: center;
-    padding: 1.2mm 3mm;
-    gap: 2mm;
-    border-bottom: 0.2pt solid #f0f0f0;
-  }
+  .habit-row { display: flex; align-items: center; padding: 1mm 2mm; gap: 1.5mm; border-bottom: 0.2pt solid #f0f0f0; }
 
-  .habit-name { font-size: 7pt; color: #444444; width: 14mm; flex-shrink: 0; }
+  .habit-name { font-size: 5.5pt; color: #444; width: 11mm; flex-shrink: 0; }
 
-  .habit-dots { display: flex; gap: 1.5mm; }
+  .habit-dots { display: flex; gap: 1mm; }
 
-  .habit-dot {
-    width: 3.5mm;
-    height: 3.5mm;
-    border-radius: 50%;
-    border: 0.4pt solid #cccccc;
-  }
+  .habit-dot { width: 2.8mm; height: 2.8mm; border-radius: 50%; border: 0.4pt solid #ccc; }
 
   /* ── NOTES ── */
-  .col-notes {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+  .col-notes { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-  .notes-body {
-    flex: 1;
-    padding: 2mm 3mm 0;
-    overflow: hidden;
-  }
+  .notes-body { flex: 1; padding: 1.5mm 2mm 0; overflow: hidden; }
 
-  .note-line {
-    display: flex;
-    align-items: center;
-    gap: 2mm;
-    padding: 1.8mm 0;
-    border-bottom: 0.25pt solid #e8e8e8;
-  }
+  .note-line { display: flex; align-items: center; gap: 1.5mm; padding: 1.4mm 0; border-bottom: 0.2pt solid #e8e8e8; }
 
-  .note-bullet {
-    width: 1.5mm;
-    height: 1.5mm;
-    border-radius: 50%;
-    background: #cccccc;
-    flex-shrink: 0;
-  }
+  .note-bullet { width: 1.2mm; height: 1.2mm; border-radius: 50%; background: #ccc; flex-shrink: 0; }
 
   /* ── FOOTER ── */
   .footer {
-    height: 18mm;
-    border: 0.3pt solid #cccccc;
-    border-radius: 1.5px;
+    height: 14mm;
+    border: 0.3pt solid #ccc;
+    border-radius: 1px;
     background: #fafafa;
-    padding: 2mm 4mm;
+    padding: 1.5mm 3mm;
     display: flex;
     flex-direction: column;
-    gap: 2mm;
+    gap: 1.5mm;
     flex-shrink: 0;
   }
 
-  .footer-label {
-    font-size: 6.5pt;
-    font-weight: 500;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #888888;
-    border-bottom: 0.3pt solid #dddddd;
-    padding-bottom: 1.5mm;
-  }
+  .footer-label { font-size: 5pt; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #888; border-bottom: 0.3pt solid #ddd; padding-bottom: 1mm; }
 
-  .footer-rows { display: flex; flex-direction: column; gap: 2.5mm; }
+  .footer-rows { display: flex; flex-direction: column; gap: 2mm; }
 
-  .footer-row { display: flex; align-items: baseline; gap: 2mm; }
+  .footer-row { display: flex; align-items: baseline; gap: 1.5mm; }
 
-  .footer-prompt { font-size: 7pt; color: #aaaaaa; font-style: italic; white-space: nowrap; }
+  .footer-prompt { font-size: 5.5pt; color: #aaa; font-style: italic; white-space: nowrap; }
 
-  .footer-line { flex: 1; border-bottom: 0.3pt solid #dddddd; }
+  .footer-line { flex: 1; border-bottom: 0.3pt solid #ddd; }
 </style>
 </head>
 <body>
@@ -434,7 +358,6 @@
           <div class="todo-blank-line"></div>
         </div>
         {% endfor %}
-
         <div class="todo-divider"></div>
         <div class="todo-section-label">— later</div>
         {% for item in todo_later %}
@@ -481,14 +404,11 @@
     <div class="footer-label">End of Day</div>
     <div class="footer-rows">
       <div class="footer-row">
-        <span class="footer-prompt">win ·</span>
-        <div class="footer-line"></div>
-        <span class="footer-prompt">grateful ·</span>
-        <div class="footer-line"></div>
+        <span class="footer-prompt">win ·</span><div class="footer-line"></div>
+        <span class="footer-prompt">grateful ·</span><div class="footer-line"></div>
       </div>
       <div class="footer-row">
-        <span class="footer-prompt">tomorrow ·</span>
-        <div class="footer-line"></div>
+        <span class="footer-prompt">tomorrow ·</span><div class="footer-line"></div>
       </div>
     </div>
   </div>
