@@ -112,7 +112,8 @@ def generate():
     template = jinja.get_template("planner.html")
     html_out = template.render(**payload)
 
-    pdf_bytes = HTML(string=html_out, base_url=TEMPLATE_DIR).write_pdf()
+    # zoom=0.75 compensates for weasyprint 60.0 rendering at 96dpi instead of 72dpi
+    pdf_bytes = HTML(string=html_out, base_url=TEMPLATE_DIR).write_pdf(zoom=0.75)
 
     return send_file(
         io.BytesIO(pdf_bytes),

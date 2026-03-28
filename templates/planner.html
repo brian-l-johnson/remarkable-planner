@@ -120,6 +120,21 @@
 
   .week-num { font-size: 8pt; color: #666; margin-top: 0.5mm; }
 
+
+  /* ── AI SUMMARY BANNER ── */
+  .summary-banner {
+    flex-shrink: 0;
+    background: #f0f0f0;
+    border: 0.5pt solid #999;
+    border-radius: 1px;
+    padding: 2mm 4mm;
+    text-align: center;
+    font-size: 9pt;
+    font-style: italic;
+    color: #333;
+    line-height: 1.3;
+  }
+
   /* ── MAIN: two columns ── */
   .columns {
     flex: 1;
@@ -374,6 +389,11 @@
       {% endif %}
     </div>
   </div>
+
+  <!-- AI SUMMARY BANNER -->
+  {% if ai_summary %}
+  <div class="summary-banner">{{ ai_summary }}</div>
+  {% endif %}
 
   <!-- COLUMNS -->
   <div class="columns">
