@@ -6,25 +6,21 @@ import fs from "fs/promises";
 const app    = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
-const TOKEN_PATH      = process.env.RMAPI_TOKEN_PATH ?? "/secret/rmapi-token";
-const ARCHIVE_FOLDER  = process.env.ARCHIVE_FOLDER   ?? "Daily Planner Archive";
-const PORT            = process.env.PORT              ?? 8080;
-
-async function loadToken() {
-  const token = await fs.readFile(TOKEN_PATH, "utf8");
-  return token.trim();
-}
+const TOKEN_PATH     = process.env.RMAPI_TOKEN_PATH  ?? "/secret/rmapi-token";
+const ARCHIVE_FOLDER = process.env.ARCHIVE_FOLDER    ?? "Daily Planner Archive";
+const KEEP_DAYS      = parseInt(process.env.KEEP_DAYS    ?? "7",  10);
+const DELETE_DAYS    = parseInt(process.env.DELETE_DAYS  ?? "30", 10);
+const PORT           = process.env.PORT              ?? 8080;
 
 async function getApi() {
-  const token = await loadToken();
-  return remarkable(token);
+  const token = await fs.readFile(TOKEN_PATH, "utf8");
+  return remarkable(token.trim());
 }
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-// POST /upload — upload a PDF to the root of reMarkable
 app.post("/upload", upload.single("pdf"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ status: "error", message: "No pdf field in request" });
@@ -35,12 +31,10 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
   const filename = req.body.filename ?? `Daily Planner ${dateStr}`;
 
   try {
-    const api   = await getApi();
+    const api = await getApi();
 
-    // Archive yesterday's planner before uploading today's
-    await archiveOldPlanners(api, filename);
+    await managePlanners(api, today);
 
-    // Upload today's planner
     const entry = await api.uploadPdf(filename, req.file.buffer.buffer);
 
     console.log(`✅ Uploaded "${filename}" (docID: ${entry.docID})`);
@@ -56,53 +50,62 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
   }
 });
 
-// Find and move any existing Daily Planner docs (except today's) to archive folder
-async function archiveOldPlanners(api, todayFilename) {
+async function managePlanners(api, today) {
   try {
     const allMeta = await api.getEntriesMetadata();
 
-    // Find or create the archive collection
-    let archiveFolder = allMeta.find(
+    // Find the archive folder — must already exist on the device
+    const archiveFolder = allMeta.find(
       e => e.type === "CollectionType" && e.visibleName === ARCHIVE_FOLDER
     );
 
     if (!archiveFolder) {
-      console.log(`Creating archive folder "${ARCHIVE_FOLDER}"...`);
-      const entry = await api.putCollection(ARCHIVE_FOLDER, { parent: "" });
-      // getEntriesMetadata again to get the new folder's documentId
-      const refreshed = await api.getEntriesMetadata();
-      archiveFolder = refreshed.find(
-        e => e.type === "CollectionType" && e.visibleName === ARCHIVE_FOLDER
-      );
-    }
-
-    if (!archiveFolder) {
-      console.warn("Could not find or create archive folder, skipping archive step");
+      console.warn(`Archive folder "${ARCHIVE_FOLDER}" not found — skipping management step.`);
+      console.warn(`Create a folder named "${ARCHIVE_FOLDER}" on your reMarkable to enable archiving.`);
       return;
     }
 
-    // Find old Daily Planner PDFs in root (parent === "") that aren't today's
-    const oldPlanners = allMeta.filter(
-      e => e.type !== "CollectionType"
-        && e.visibleName.startsWith("Daily Planner ")
-        && e.visibleName !== todayFilename
-        && (e.parent === "" || e.parent == null)
-    );
+    const archiveCutoff = new Date(today);
+    archiveCutoff.setDate(archiveCutoff.getDate() - KEEP_DAYS);
 
-    for (const doc of oldPlanners) {
-      console.log(`Archiving "${doc.visibleName}" (${doc.documentId})...`);
-      await api.move(doc.documentId, archiveFolder.documentId);
+    const deleteCutoff = new Date(today);
+    deleteCutoff.setDate(deleteCutoff.getDate() - DELETE_DAYS);
+
+    let archived = 0;
+    let deleted  = 0;
+
+    for (const doc of allMeta) {
+      if (doc.type === "CollectionType") continue;
+
+      const match = doc.visibleName.match(/^Daily Planner (\d{4}-\d{2}-\d{2})$/);
+      if (!match) continue;
+
+      const plannerDate = new Date(match[1]);
+
+      // In archive folder and older than DELETE_DAYS → trash
+      if (doc.parent === archiveFolder.documentId && plannerDate < deleteCutoff) {
+        console.log(`Trashing "${doc.visibleName}" (>${DELETE_DAYS} days old)...`);
+        await api.move(doc.documentId, "trash");
+        deleted++;
+      }
+      // In root and older than KEEP_DAYS → move to archive
+      else if ((doc.parent === "" || doc.parent == null) && plannerDate < archiveCutoff) {
+        console.log(`Archiving "${doc.visibleName}" (>${KEEP_DAYS} days old)...`);
+        await api.move(doc.documentId, archiveFolder.documentId);
+        archived++;
+      }
     }
 
-    if (oldPlanners.length > 0) {
-      console.log(`✅ Archived ${oldPlanners.length} old planner(s)`);
-    }
+    if (archived > 0) console.log(`✅ Archived ${archived} planner(s) to "${ARCHIVE_FOLDER}"`);
+    if (deleted  > 0) console.log(`✅ Trashed ${deleted} planner(s) older than ${DELETE_DAYS} days`);
+    if (archived === 0 && deleted === 0) console.log("No planners to archive or delete");
+
   } catch (err) {
-    // Don't fail the upload if archiving fails
-    console.warn("Archive step failed (non-fatal):", err.message);
+    console.warn("Planner management failed (non-fatal):", err.message);
   }
 }
 
 app.listen(PORT, () => {
   console.log(`rmapi-js upload service listening on :${PORT}`);
+  console.log(`  Keep in root: ${KEEP_DAYS} days | Archive for: ${DELETE_DAYS} days | Then trash`);
 });
