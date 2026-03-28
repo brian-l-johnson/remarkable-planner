@@ -23,7 +23,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background-image: radial-gradient(circle, #bbbbbb 0.7px, transparent 0.7px);
+    background-image: radial-gradient(circle, #999999 0.8px, transparent 0.8px);
     background-size: 3.75mm 3.75mm;
     z-index: 0;
     pointer-events: none;
@@ -42,9 +42,9 @@
 
   /* ── HEADER ── */
   .header {
-    height: 20mm;
+    height: 18mm;
     background: #f5f5f5;
-    border: 0.4pt solid #cccccc;
+    border: 0.5pt solid #999999;
     border-radius: 1px;
     display: flex;
     align-items: stretch;
@@ -61,17 +61,18 @@
 
   .header-day {
     font-size: 10pt;
-    color: #888;
+    color: #444;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin-bottom: 1mm;
   }
 
   .header-date-big {
-    font-size: 22pt;
+    font-size: 17pt;
     font-weight: 500;
     color: #1a1a1a;
     line-height: 1;
+    white-space: nowrap;
   }
 
   .header-intention {
@@ -90,6 +91,7 @@
     color: #bbb;
     font-style: italic;
     margin-bottom: 1.5mm;
+    color: #555;
   }
 
   .header-intention-line {
@@ -114,13 +116,13 @@
 
   .weather-info { display: flex; flex-direction: column; gap: 1mm; }
 
-  .weather-condition { font-size: 9pt; color: #666; }
+  .weather-condition { font-size: 9pt; color: #333; }
 
   .weather-temps { font-size: 14pt; font-weight: 500; color: #1a1a1a; }
 
   .weather-low { color: #378ADD; font-size: 11pt; }
 
-  .week-num { font-size: 9pt; color: #bbb; margin-top: 0.5mm; }
+  .week-num { font-size: 9pt; color: #666; margin-top: 0.5mm; }
 
   /* ── COLUMNS ── */
   .columns {
@@ -128,7 +130,7 @@
     width: 151.7947mm;
     display: flex;
     min-height: 0;
-    border: 0.4pt solid #ccc;
+    border: 0.5pt solid #999;
     border-radius: 1px;
     overflow: hidden;
   }
@@ -147,7 +149,7 @@
     font-weight: 500;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #888;
+    color: #333;
     padding: 1.5mm 2.5mm 1mm;
     border-bottom: 0.3pt solid #ddd;
     flex-shrink: 0;
@@ -173,14 +175,14 @@
     padding-top: 0.4mm;
     padding-left: 1.5mm;
     font-size: 9pt;
-    color: #aaa;
+    color: #555;
     flex-shrink: 0;
     line-height: 1;
   }
 
   .time-line {
     flex: 1;
-    border-top: 0.3pt solid #ddd;
+    border-top: 0.5pt solid #bbb;
     margin-right: 1.5mm;
   }
 
@@ -188,7 +190,7 @@
     position: absolute;
     left: 8mm;
     right: 1.5mm;
-    border-top: 0.2pt dashed #eee;
+    border-top: 0.3pt dashed #ccc;
   }
 
   .cal-event {
@@ -205,7 +207,7 @@
   .cal-event.cal-amber { background: #FAEEDA; border-left: 2pt solid #EF9F27; }
 
   .cal-event-title { font-size: 9pt; font-weight: 500; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cal-event-time  { font-size: 8pt; color: #666; }
+  .cal-event-time  { font-size: 8pt; color: #333; }
 
   /* ── TODO ── */
   .col-todo {
@@ -219,14 +221,14 @@
 
   .todo-body { flex: 1; padding: 1.5mm 2.5mm; overflow: hidden; }
 
-  .todo-section-label { font-size: 8.5pt; color: #bbb; font-style: italic; margin-bottom: 1mm; margin-top: 0.8mm; }
+  .todo-section-label { font-size: 8.5pt; color: #666; font-style: italic; margin-bottom: 1mm; margin-top: 0.8mm; }
 
   .todo-item { display: flex; align-items: flex-start; margin-bottom: 2mm; gap: 2mm; }
 
   .todo-checkbox {
     width: 3.5mm;
     height: 3.5mm;
-    border: 0.5pt solid #888;
+    border: 0.8pt solid #444;
     border-radius: 0.5px;
     flex-shrink: 0;
     margin-top: 0.3mm;
@@ -240,12 +242,12 @@
   .todo-blank-box {
     width: 3.5mm;
     height: 3.5mm;
-    border: 0.3pt solid #ddd;
+    border: 0.5pt solid #999;
     border-radius: 0.5px;
     flex-shrink: 0;
   }
 
-  .todo-blank-line { flex: 1; border-bottom: 0.25pt dashed #e0e0e0; }
+  .todo-blank-line { flex: 1; border-bottom: 0.4pt dashed #bbb; }
 
   .todo-divider { border-top: 0.25pt dashed #ddd; margin: 1.5mm 0; }
 
@@ -253,25 +255,25 @@
 
   .habit-row { display: flex; align-items: center; padding: 1.2mm 2.5mm; gap: 1.5mm; border-bottom: 0.2pt solid #f0f0f0; }
 
-  .habit-name { font-size: 9pt; color: #444; width: 13mm; flex-shrink: 0; }
+  .habit-name { font-size: 9pt; color: #222; width: 13mm; flex-shrink: 0; }
 
   .habit-dots { display: flex; gap: 1.2mm; }
 
-  .habit-dot { width: 3.5mm; height: 3.5mm; border-radius: 50%; border: 0.5pt solid #ccc; }
+  .habit-dot { width: 3.5mm; height: 3.5mm; border-radius: 50%; border: 0.8pt solid #888; }
 
   /* ── NOTES ── */
   .col-notes { width: 39.4666mm; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
 
   .notes-body { flex: 1; padding: 1.5mm 2mm 0; overflow: hidden; }
 
-  .note-line { display: flex; align-items: center; gap: 1.5mm; padding: 1.6mm 0; border-bottom: 0.25pt solid #e0e0e0; }
+  .note-line { display: flex; align-items: center; gap: 1.5mm; padding: 1.6mm 0; border-bottom: 0.4pt solid #ccc; }
 
-  .note-bullet { width: 1.5mm; height: 1.5mm; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+  .note-bullet { width: 1.5mm; height: 1.5mm; border-radius: 50%; background: #888; flex-shrink: 0; }
 
   /* ── FOOTER ── */
   .footer {
     height: 14mm;
-    border: 0.4pt solid #ccc;
+    border: 0.5pt solid #999;
     border-radius: 1px;
     background: #fafafa;
     padding: 1.5mm 3mm;
@@ -281,15 +283,15 @@
     flex-shrink: 0;
   }
 
-  .footer-label { font-size: 9pt; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #888; border-bottom: 0.3pt solid #ddd; padding-bottom: 1mm; }
+  .footer-label { font-size: 9pt; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: #333; border-bottom: 0.3pt solid #ddd; padding-bottom: 1mm; }
 
   .footer-rows { display: flex; flex-direction: column; gap: 2.5mm; }
 
   .footer-row { display: flex; align-items: baseline; gap: 1.5mm; }
 
-  .footer-prompt { font-size: 9pt; color: #aaa; font-style: italic; white-space: nowrap; }
+  .footer-prompt { font-size: 9pt; color: #555; font-style: italic; white-space: nowrap; }
 
-  .footer-line { flex: 1; border-bottom: 0.3pt solid #ddd; }
+  .footer-line { flex: 1; border-bottom: 0.5pt solid #bbb; }
 </style>
 </head>
 <body>
