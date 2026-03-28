@@ -105,6 +105,7 @@ def generate():
         "todo_later":        todo_later,
         "priority_blanks":   priority_blanks,
         "later_blanks":      later_blanks,
+        "ai_summary":        data.get("ai_summary", ""),
         "weather_symbols":   WEATHER_SYMBOLS,
         "weather_labels":    WEATHER_LABELS,
     }
