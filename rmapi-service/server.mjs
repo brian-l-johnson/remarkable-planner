@@ -18,6 +18,34 @@ async function getApi() {
   return remarkable(token.trim());
 }
 
+// Fetch only .metadata (not .content) for every root-level item, in bounded
+// batches of `concurrency`.  Returns objects with { id, hash, visibleName,
+// type, parent } — everything managePlanners() and the download endpoint need.
+// Avoids the N×3 fan-out of api.listItems() that was triggering ETIMEDOUT.
+async function listItemsMeta(api, concurrency = 8) {
+  const [rootHash]          = await api.raw.getRootHash();
+  const { entries: rootEnts } = await api.raw.getEntries(rootHash);
+
+  const items = [];
+  for (let i = 0; i < rootEnts.length; i += concurrency) {
+    const batch   = rootEnts.slice(i, i + concurrency);
+    const results = await Promise.all(batch.map(async ({ id, hash }) => {
+      try {
+        const { entries } = await api.raw.getEntries(hash);
+        const metaEnt = entries.find(e => e.id.endsWith(".metadata"));
+        if (!metaEnt) return null;
+        const meta = await api.raw.getMetadata(metaEnt.hash);
+        return { id, hash, visibleName: meta.visibleName, type: meta.type, parent: meta.parent };
+      } catch (e) {
+        console.warn(`Skipping item ${id}: ${e.message}`);
+        return null;
+      }
+    }));
+    items.push(...results.filter(Boolean));
+  }
+  return items;
+}
+
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
@@ -65,8 +93,7 @@ app.get("/download/:date", async (req, res) => {
   try {
     const api = await getApi();
 
-    // listItems() returns all entries with id, hash, visibleName, type, parent
-    const items = await api.listItems();
+    const items = await listItemsMeta(api);
     const doc   = items.find(i => i.type === "DocumentType" && i.visibleName === targetName);
 
     if (!doc) {
@@ -123,8 +150,7 @@ app.get("/download/:date", async (req, res) => {
 
 async function managePlanners(api, today) {
   try {
-    // listItems() returns all entries — replaces the deprecated getEntriesMetadata()
-    const items = await api.listItems();
+    const items = await listItemsMeta(api);
 
     // Find the archive folder — must already exist on the device
     const archiveFolder = items.find(
