@@ -7,11 +7,12 @@ import AdmZip from "adm-zip";
 const app    = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
-const TOKEN_PATH     = process.env.RMAPI_TOKEN_PATH  ?? "/secret/rmapi-token";
-const ARCHIVE_FOLDER = process.env.ARCHIVE_FOLDER    ?? "Daily Planner Archive";
-const KEEP_DAYS      = parseInt(process.env.KEEP_DAYS    ?? "7",  10);
-const DELETE_DAYS    = parseInt(process.env.DELETE_DAYS  ?? "30", 10);
-const PORT           = process.env.PORT              ?? 8080;
+const TOKEN_PATH      = process.env.RMAPI_TOKEN_PATH  ?? "/secret/rmapi-token";
+const ARCHIVE_FOLDER  = process.env.ARCHIVE_FOLDER    ?? "Daily Planner Archive";
+const PLANNER_PREFIX  = process.env.PLANNER_PREFIX    ?? "planner";
+const KEEP_DAYS       = parseInt(process.env.KEEP_DAYS    ?? "7",  10);
+const DELETE_DAYS     = parseInt(process.env.DELETE_DAYS  ?? "30", 10);
+const PORT            = process.env.PORT              ?? 8080;
 
 async function getApi() {
   const token = await fs.readFile(TOKEN_PATH, "utf8");
@@ -57,7 +58,7 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
 
   const today    = new Date();
   const dateStr  = today.toISOString().slice(0, 10);
-  const filename = req.body.filename ?? `Daily Planner ${dateStr}`;
+  const filename = req.body.filename ?? `${PLANNER_PREFIX}-${dateStr}`;
 
   try {
     const api = await getApi();
@@ -88,7 +89,7 @@ app.get("/download/:date", async (req, res) => {
     return res.status(400).json({ status: "error", message: "Date must be YYYY-MM-DD" });
   }
 
-  const targetName = `Daily Planner ${date}`;
+  const targetName = `${PLANNER_PREFIX}-${date}`;
 
   try {
     const api = await getApi();
@@ -175,7 +176,7 @@ async function managePlanners(api, today) {
     for (const doc of items) {
       if (doc.type !== "DocumentType") continue;
 
-      const match = doc.visibleName.match(/^Daily Planner (\d{4}-\d{2}-\d{2})$/);
+      const match = doc.visibleName.match(new RegExp(`^${PLANNER_PREFIX}-(\\d{4}-\\d{2}-\\d{2})$`));
       if (!match) continue;
 
       const plannerDate = new Date(match[1]);
