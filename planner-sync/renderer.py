@@ -28,9 +28,15 @@ RENDER_DPI = 150
 
 
 def _rm_to_pdf(x: float, y: float, page_w_pt: float, page_h_pt: float) -> tuple[float, float]:
-    """Map reMarkable device coordinates to PDF points (origin bottom-left)."""
-    pdf_x = x * (page_w_pt / RM_WIDTH)
-    pdf_y = page_h_pt - y * (page_h_pt / RM_HEIGHT)
+    """Map reMarkable PDF-annotation coordinates to PDF points (origin bottom-left).
+
+    When the reMarkable annotates a PDF document, X is stored directly in PDF
+    points (0 … page_width_pt, left→right).  Y is stored in reMarkable screen
+    pixels (0 … 1872, top→bottom) and must be scaled then flipped to match
+    the PDF bottom-left origin convention.
+    """
+    pdf_x = x                                          # already in PDF points
+    pdf_y = page_h_pt - y * (page_h_pt / RM_HEIGHT)   # RM px → PDF pt, flip Y
     return pdf_x, pdf_y
 
 
