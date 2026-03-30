@@ -38,48 +38,36 @@ def _rm_to_pdf(x: float, y: float) -> tuple[float, float]:
     return pdf_x, pdf_y
 
 
-def _build_stroke_overlay(rm_data: bytes) -> bytes:
+def _iter_children(node) -> list:
     """
-    Parse .rm stroke data and render it to a transparent PDF overlay.
-    Returns PDF bytes.
+    Return the ordered list of children from a SceneTree, Group, or any node
+    that carries a CrdtSequence under .children.
+
+    SceneTree  → .root  (a Group)  → .children  (CrdtSequence)
+    Group      → .children         (CrdtSequence)
+    CrdtSequence supports both .values() and direct iteration.
     """
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=(PAGE_W_PT, PAGE_H_PT))
-    c.setStrokeColorRGB(0, 0, 0)
-    c.setFillColorRGB(0, 0, 0)
+    # Unwrap SceneTree → its root Group first
+    if hasattr(node, "root"):
+        node = node.root
 
-    try:
-        tree = rmscene.read_tree(io.BytesIO(rm_data))
-        _render_tree(c, tree)
-    except Exception as e:
-        logger.warning("Failed to parse .rm data: %s", e)
-        # Return an empty overlay rather than crashing
-        c.save()
-        return buf.getvalue()
+    children = getattr(node, "children", None)
+    if children is None:
+        return []
 
-    c.save()
-    return buf.getvalue()
+    # CrdtSequence exposes .values(); fall back to plain iteration
+    if hasattr(children, "values"):
+        return list(children.values())
+    return list(children)
 
 
-def _render_tree(c: canvas.Canvas, tree) -> None:
-    """Walk the scene tree and draw strokes onto the reportlab canvas."""
-    for block in _iter_blocks(tree):
-        if isinstance(block, si.Group):
-            _render_tree(c, block)
-        elif isinstance(block, si.Line):
-            _draw_line(c, block)
-
-
-def _iter_blocks(node) -> list:
-    """Yield drawable items from a scene tree node."""
-    items = []
-    if hasattr(node, "children"):
-        for child in node.children.values() if isinstance(node.children, dict) else node.children:
-            items.append(child)
-    elif hasattr(node, "value") and hasattr(node.value, "children"):
-        for child in node.value.children.values() if isinstance(node.value.children, dict) else node.value.children:
-            items.append(child)
-    return items
+def _render_node(c: canvas.Canvas, node) -> None:
+    """Recursively walk a scene node (SceneTree, Group) and draw all Lines."""
+    for child in _iter_children(node):
+        if isinstance(child, si.Group):
+            _render_node(c, child)
+        elif isinstance(child, si.Line):
+            _draw_line(c, child)
 
 
 def _draw_line(c: canvas.Canvas, line: si.Line) -> None:
@@ -88,9 +76,9 @@ def _draw_line(c: canvas.Canvas, line: si.Line) -> None:
     if not points:
         return
 
-    # Base pen width (in PDF points). reMarkable width values are typically 1–3.
-    base_width = getattr(line, "brush_size", 1.8)
-    c.setLineWidth(max(0.5, base_width * 0.6))
+    # thickness_scale is the correct attribute in rmscene 0.6+
+    thickness = getattr(line, "thickness_scale", None) or getattr(line, "brush_size", 1.8)
+    c.setLineWidth(max(0.5, float(thickness) * 0.6))
     c.setLineCap(1)   # round cap
     c.setLineJoin(1)  # round join
 
@@ -105,6 +93,42 @@ def _draw_line(c: canvas.Canvas, line: si.Line) -> None:
             path.lineTo(px, py)
 
     c.drawPath(path, stroke=1, fill=0)
+
+
+def _build_stroke_overlay(rm_data: bytes) -> bytes:
+    """
+    Parse .rm stroke data and render it to a transparent PDF overlay.
+    Returns PDF bytes.
+    """
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=(PAGE_W_PT, PAGE_H_PT))
+    c.setStrokeColorRGB(0, 0, 0)
+    c.setFillColorRGB(0, 0, 0)
+
+    stroke_count = 0
+    try:
+        tree = rmscene.read_tree(io.BytesIO(rm_data))
+
+        # Count strokes before drawing for diagnostic logging
+        def _count(node):
+            n = 0
+            for child in _iter_children(node):
+                if isinstance(child, si.Line):
+                    n += 1
+                elif isinstance(child, si.Group):
+                    n += _count(child)
+            return n
+
+        stroke_count = _count(tree)
+        logger.info("Parsed %d stroke(s) from .rm data", stroke_count)
+        _render_node(c, tree)
+    except Exception as e:
+        logger.warning("Failed to parse .rm data: %s", e)
+
+    c.save()
+    if stroke_count == 0:
+        logger.warning("No strokes were rendered — overlay will be empty")
+    return buf.getvalue()
 
 
 def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> bytes:
@@ -134,7 +158,7 @@ def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> byt
     overlay_bytes = _build_stroke_overlay(rm_data)
 
     # Merge overlay onto the base PDF's first page
-    base_reader   = PdfReader(io.BytesIO(base_pdf_bytes))
+    base_reader    = PdfReader(io.BytesIO(base_pdf_bytes))
     overlay_reader = PdfReader(io.BytesIO(overlay_bytes))
 
     writer = PdfWriter()
