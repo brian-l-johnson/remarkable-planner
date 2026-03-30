@@ -36,7 +36,7 @@ async function listItemsMeta(api, concurrency = 8) {
         const metaEnt = entries.find(e => e.id.endsWith(".metadata"));
         if (!metaEnt) return null;
         const meta = await api.raw.getMetadata(metaEnt.hash);
-        return { id, hash, visibleName: meta.visibleName, type: meta.type, parent: meta.parent };
+        return { id, hash, visibleName: meta.visibleName, type: meta.type, parent: meta.parent, lastModified: meta.lastModified ?? "0" };
       } catch (e) {
         console.warn(`Skipping item ${id}: ${e.message}`);
         return null;
@@ -94,11 +94,17 @@ app.get("/download/:date", async (req, res) => {
   try {
     const api = await getApi();
 
-    const items = await listItemsMeta(api);
-    const doc   = items.find(i => i.type === "DocumentType" && i.visibleName === targetName);
+    const items   = await listItemsMeta(api);
+    const matches = items.filter(i => i.type === "DocumentType" && i.visibleName === targetName);
 
-    if (!doc) {
+    if (matches.length === 0) {
       return res.status(404).json({ status: "not_found", message: `No document named "${targetName}"` });
+    }
+
+    // When multiple copies exist (e.g. from retried uploads), use the most recently modified.
+    const doc = matches.sort((a, b) => Number(b.lastModified) - Number(a.lastModified))[0];
+    if (matches.length > 1) {
+      console.warn(`Found ${matches.length} documents named "${targetName}" — using most recent (${doc.id})`);
     }
 
     // getDocument() returns the full document bundle as a zip Uint8Array
@@ -119,9 +125,9 @@ app.get("/download/:date", async (req, res) => {
       } else if (name.endsWith(".content")) {
         try { contentMetadata = JSON.parse(entry.getData().toString("utf8")); } catch { /* non-fatal */ }
       } else if (name.endsWith(".rm")) {
-        // Paths are like "{id}/{pageUUID}.rm" — key by index in order found
-        const pageMatch = name.match(/\/(\d+)\.rm$/);
-        const pageKey   = pageMatch ? pageMatch[1] : String(Object.keys(rmFiles).length);
+        // Paths are like "{id}/{pageUUID}.rm" (UUID) or "{id}/{n}.rm" (legacy number).
+        // Key by sequential index so the renderer always gets 0-based page numbers.
+        const pageKey = String(Object.keys(rmFiles).length);
         rmFiles[pageKey] = entry.getData().toString("base64");
       }
     }
