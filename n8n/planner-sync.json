@@ -1,0 +1,265 @@
+{
+  "name": "reMarkable Planner Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 10,12,14,16,18,20,22 * * *" }]
+        }
+      },
+      "id": "sync-schedule",
+      "name": "Every 2h (10am–10pm)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://planner-sync.remarkable.svc.cluster.local/render",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ date: $now.format('yyyy-MM-dd') }) }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "render-request",
+      "name": "Render Planner PNG",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 300]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "string": [{ "value1": "={{ $json.status }}", "value2": "ok" }]
+        }
+      },
+      "id": "check-render",
+      "name": "Has Annotations?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const status = $json.status;\nconst d = $json.date || 'unknown';\nif (status === 'not_found') {\n  console.log(`ℹ️ No planner found for ${d} — skipping sync`);\n} else if (status === 'no_annotations') {\n  console.log(`ℹ️ No annotations yet for ${d} — skipping sync`);\n} else {\n  console.warn(`⚠️ Render returned unexpected status '${status}' for ${d}`);\n}\nreturn $input.all();"
+      },
+      "id": "skip-log",
+      "name": "Log Skip Reason",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 460]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "HTTP-Referer", "value": "https://github.com/remarkable-planner" },
+            { "name": "X-Title",      "value": "Remarkable Planner Sync" }
+          ]
+        },
+        "sendBody": true,
+        "bodyContentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: 'anthropic/claude-haiku-4.5',\n  temperature: 0,\n  max_tokens: 1024,\n  messages: [{\n    role: 'user',\n    content: [\n      {\n        type: 'image_url',\n        image_url: { url: 'data:image/png;base64,' + $json.png }\n      },\n      {\n        type: 'text',\n        text: 'You are analyzing a daily planner page. Focus ONLY on the \"To Do\" section in the upper-right area of the page.\\n\\nThe To Do section has two sub-columns separated by a vertical line:\\n- LEFT sub-column labeled \"— priority\": contains up to 3 items\\n- RIGHT sub-column labeled \"— later\": contains up to 4 items\\n\\nEach item has a small square checkbox on the left followed by text.\\nItems come in two types:\\n1. PRINTED items: clearly typed/printed text (pre-filled in the planner)\\n2. HANDWRITTEN items: written by hand on the blank dashed lines\\n\\nFor each item you can see, determine:\\n- \"text\": the text content (transcribe handwriting as accurately as possible; skip if illegible)\\n- \"checked\": true if the checkbox contains ANY mark, false if empty\\n- \"source\": \"printed\" if typed, \"handwritten\" if written by hand\\n- \"column\": \"priority\" or \"later\"\\n\\nIMPORTANT:\\n- Ignore blank rows with no text\\n- Ignore the Notes section below the to-do area\\n- If a handwritten item is illegible, skip it\\n- Return ONLY valid JSON, no explanation\\n\\nReturn this exact JSON format:\\n{\\n  \"todos\": [\\n    {\"text\": \"...\", \"checked\": true, \"source\": \"printed\", \"column\": \"priority\"}\\n  ]\\n}'\n      }\n    ]\n  }]\n}) }}",
+        "options": { "timeout": 60000 },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "credentials": {
+          "openAiApi": {
+            "id": "openrouter-creds",
+            "name": "OpenRouter API"
+          }
+        }
+      },
+      "id": "vision-call",
+      "name": "Claude Vision: Recognize Todos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 200]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Extract and parse the JSON from Claude's response\nconst content = $json.choices[0].message.content.trim();\nconst stripped = content.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '').trim();\n\nlet parsed;\ntry {\n  parsed = JSON.parse(stripped);\n} catch (e) {\n  throw new Error('Vision model returned unparseable JSON: ' + e.message + '\\nRaw: ' + content);\n}\n\nconst todos = parsed.todos || [];\nconst date  = $('Render Planner PNG').first().json.date;\nconsole.log(`🔍 Recognized ${todos.length} todo item(s) for ${date}`);\n\nreturn [{ json: { todos, date } }];"
+      },
+      "id": "parse-vision",
+      "name": "Parse Vision Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 200]
+    },
+
+    {
+      "parameters": {
+        "resource": "service",
+        "operation": "call",
+        "domain": "todo",
+        "service": "get_items",
+        "serviceData": "={{ JSON.stringify({ entity_id: 'todo.tasks', return_response: true }) }}"
+      },
+      "id": "ha-get-todos",
+      "name": "HA: Get Current Todos",
+      "type": "n8n-nodes-base.homeAssistant",
+      "typeVersion": 1,
+      "position": [1100, 200],
+      "credentials": {
+        "homeAssistantApi": {
+          "id": "ha-creds",
+          "name": "Home Assistant account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Merge recognized todos with current HA state and produce a list of actions.\n// Each returned item represents one HA service call to make.\nconst recognized = $('Parse Vision Response').first().json;\nconst todos       = recognized.todos || [];\nconst date        = recognized.date;\n\n// Current HA items (for duplicate detection on handwritten entries)\nconst haResponse  = $json;\nconst currentItems = haResponse?.['todo.tasks']?.items ?? [];\nconst currentTexts = new Set(currentItems.map(i => (i.summary || '').trim().toLowerCase()));\n\nconst actions = [];\n\nfor (const todo of todos) {\n  const text = (todo.text || '').trim();\n  if (!text) continue;\n\n  if (todo.source === 'printed' && todo.checked) {\n    // Mark existing HA task as completed\n    actions.push({ json: { _action: 'complete', item: text, date } });\n\n  } else if (todo.source === 'handwritten') {\n    if (currentTexts.has(text.toLowerCase())) {\n      console.log(`⏭️ Skipping duplicate: \"${text}\"`);\n      continue;\n    }\n    // Add new handwritten task; flag if it was already checked off\n    actions.push({ json: { _action: 'add', item: text, checked: todo.checked, date } });\n    currentTexts.add(text.toLowerCase()); // prevent duplicates within same run\n  }\n}\n\nif (actions.length === 0) {\n  console.log(`ℹ️ No HA changes needed for ${date}`);\n  return [];\n}\n\nconst completions = actions.filter(a => a.json._action === 'complete').length;\nconst additions   = actions.filter(a => a.json._action === 'add').length;\nconsole.log(`📋 ${date}: ${completions} completion(s), ${additions} addition(s) to apply`);\n\nreturn actions;"
+      },
+      "id": "prepare-actions",
+      "name": "Prepare HA Actions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 200]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "string": [{ "value1": "={{ $json._action }}", "value2": "complete" }]
+        }
+      },
+      "id": "route-action",
+      "name": "Complete or Add?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1540, 200]
+    },
+
+    {
+      "parameters": {
+        "resource": "service",
+        "operation": "call",
+        "domain": "todo",
+        "service": "update_item",
+        "serviceData": "={{ JSON.stringify({ entity_id: 'todo.tasks', item: $json.item, status: 'completed' }) }}"
+      },
+      "id": "ha-complete",
+      "name": "HA: Mark Complete",
+      "type": "n8n-nodes-base.homeAssistant",
+      "typeVersion": 1,
+      "position": [1760, 100],
+      "credentials": {
+        "homeAssistantApi": {
+          "id": "ha-creds",
+          "name": "Home Assistant account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "resource": "service",
+        "operation": "call",
+        "domain": "todo",
+        "service": "add_item",
+        "serviceData": "={{ JSON.stringify({ entity_id: 'todo.tasks', item: $json.item }) }}"
+      },
+      "id": "ha-add",
+      "name": "HA: Add Item",
+      "type": "n8n-nodes-base.homeAssistant",
+      "typeVersion": 1,
+      "position": [1760, 300],
+      "credentials": {
+        "homeAssistantApi": {
+          "id": "ha-creds",
+          "name": "Home Assistant account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{ $json.checked }}", "value2": true }]
+        }
+      },
+      "id": "was-checked",
+      "name": "Was Already Checked?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1980, 300]
+    },
+
+    {
+      "parameters": {
+        "resource": "service",
+        "operation": "call",
+        "domain": "todo",
+        "service": "update_item",
+        "serviceData": "={{ JSON.stringify({ entity_id: 'todo.tasks', item: $json.item, status: 'completed' }) }}"
+      },
+      "id": "ha-complete-added",
+      "name": "HA: Mark Added Item Complete",
+      "type": "n8n-nodes-base.homeAssistant",
+      "typeVersion": 1,
+      "position": [2200, 200],
+      "credentials": {
+        "homeAssistantApi": {
+          "id": "ha-creds",
+          "name": "Home Assistant account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "jsCode": "console.log(`✅ Synced: ${$json.item}`);\nreturn $input.all();"
+      },
+      "id": "log-done",
+      "name": "Log Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 400]
+    }
+  ],
+
+  "connections": {
+    "Every 2h (10am–10pm)":       { "main": [[{ "node": "Render Planner PNG",           "type": "main", "index": 0 }]] },
+    "Render Planner PNG":          { "main": [[{ "node": "Has Annotations?",             "type": "main", "index": 0 }]] },
+    "Has Annotations?": {
+      "main": [
+        [{ "node": "Claude Vision: Recognize Todos", "type": "main", "index": 0 }],
+        [{ "node": "Log Skip Reason",               "type": "main", "index": 0 }]
+      ]
+    },
+    "Claude Vision: Recognize Todos": { "main": [[{ "node": "Parse Vision Response",    "type": "main", "index": 0 }]] },
+    "Parse Vision Response":          { "main": [[{ "node": "HA: Get Current Todos",    "type": "main", "index": 0 }]] },
+    "HA: Get Current Todos":          { "main": [[{ "node": "Prepare HA Actions",       "type": "main", "index": 0 }]] },
+    "Prepare HA Actions":             { "main": [[{ "node": "Complete or Add?",         "type": "main", "index": 0 }]] },
+    "Complete or Add?": {
+      "main": [
+        [{ "node": "HA: Mark Complete",  "type": "main", "index": 0 }],
+        [{ "node": "HA: Add Item",       "type": "main", "index": 0 }]
+      ]
+    },
+    "HA: Mark Complete": { "main": [[{ "node": "Log Action", "type": "main", "index": 0 }]] },
+    "HA: Add Item":      { "main": [[{ "node": "Was Already Checked?", "type": "main", "index": 0 }]] },
+    "Was Already Checked?": {
+      "main": [
+        [{ "node": "HA: Mark Added Item Complete", "type": "main", "index": 0 }],
+        [{ "node": "Log Action",                   "type": "main", "index": 0 }]
+      ]
+    },
+    "HA: Mark Added Item Complete": { "main": [[{ "node": "Log Action", "type": "main", "index": 0 }]] }
+  },
+
+  "settings": { "executionOrder": "v1" }
+}

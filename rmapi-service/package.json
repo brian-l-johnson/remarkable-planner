@@ -7,6 +7,7 @@
     "start": "node server.mjs"
   },
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "express": "^4.19.2",
     "multer": "^1.4.5-lts.1",
     "rmapi-js": "^4.0.0"
