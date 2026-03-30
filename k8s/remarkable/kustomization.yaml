@@ -5,3 +5,4 @@ resources:
   - secret.yaml
   - pdf-generator.yaml
   - rmapi-uploader.yaml
+  - planner-sync.yaml

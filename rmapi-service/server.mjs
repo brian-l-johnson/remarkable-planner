@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import { remarkable } from "rmapi-js";
 import fs from "fs/promises";
+import AdmZip from "adm-zip";
 
 const app    = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -46,6 +47,91 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
     });
   } catch (err) {
     console.error("Upload failed:", err);
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
+
+// GET /download/:date — Download an annotated planner document by date (YYYY-MM-DD).
+// Returns JSON with base64-encoded base PDF and .rm stroke files per page.
+app.get("/download/:date", async (req, res) => {
+  const { date } = req.params;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ status: "error", message: "Date must be YYYY-MM-DD" });
+  }
+
+  const targetName = `Daily Planner ${date}`;
+
+  try {
+    const api = await getApi();
+
+    // Find the document in metadata (root or archive)
+    const allMeta = await api.getEntriesMetadata();
+    const docMeta = allMeta.find(
+      e => e.type !== "CollectionType" && e.visibleName === targetName
+    );
+
+    if (!docMeta) {
+      return res.status(404).json({ status: "not_found", message: `No document named "${targetName}"` });
+    }
+
+    // Get all items (includes hash values needed for content download)
+    const items = await api.listItems();
+    const item = items.find(i => i.documentId === docMeta.documentId);
+
+    if (!item?.hash) {
+      return res.status(404).json({ status: "not_found", message: "Document found but has no hash (may still be syncing)" });
+    }
+
+    // Download the raw document zip bundle
+    const docData = await api.getDocument(item.hash);
+    const buf = Buffer.from(docData instanceof Uint8Array ? docData : new Uint8Array(docData));
+
+    const zip = new AdmZip(buf);
+    const entries = zip.getEntries();
+
+    // Extract base PDF and .rm stroke files
+    let basePdf = null;
+    let contentMetadata = null;
+    const rmFiles = {};
+
+    for (const entry of entries) {
+      const name = entry.entryName;
+
+      if (name.endsWith(".pdf")) {
+        basePdf = entry.getData().toString("base64");
+      } else if (name.endsWith(".content")) {
+        try {
+          contentMetadata = JSON.parse(entry.getData().toString("utf8"));
+        } catch {
+          // non-fatal
+        }
+      } else if (name.endsWith(".rm")) {
+        // Entry name is like "{uuid}/{pageIndex}.rm" — use page index as key
+        const pageMatch = name.match(/\/(\d+)\.rm$/);
+        const pageKey = pageMatch ? pageMatch[1] : name;
+        rmFiles[pageKey] = entry.getData().toString("base64");
+      }
+    }
+
+    if (!basePdf) {
+      return res.status(422).json({ status: "error", message: "Document has no PDF layer (epub or unsupported format?)" });
+    }
+
+    const hasAnnotations = Object.keys(rmFiles).length > 0;
+    console.log(`📥 Downloaded "${targetName}" — ${hasAnnotations ? Object.keys(rmFiles).length + " page(s) with annotations" : "no annotations yet"}`);
+
+    res.json({
+      status: "ok",
+      documentId:      docMeta.documentId,
+      visibleName:     targetName,
+      hasAnnotations,
+      basePdf,
+      rmFiles,
+      contentMetadata: contentMetadata ?? {},
+    });
+
+  } catch (err) {
+    console.error("Download failed:", err);
     res.status(500).json({ status: "error", message: err.message });
   }
 });
