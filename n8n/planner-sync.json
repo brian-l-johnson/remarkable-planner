@@ -28,7 +28,8 @@
       "name": "Render Planner PNG",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 300]
+      "position": [220, 300],
+      "continueOnFail": true
     },
 
     {
@@ -40,13 +41,13 @@
       "id": "check-render",
       "name": "Has Annotations?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 1,
       "position": [440, 300]
     },
 
     {
       "parameters": {
-        "jsCode": "const status = $json.status;\nconst d = $json.date || 'unknown';\nif (status === 'not_found') {\n  console.log(`ℹ️ No planner found for ${d} — skipping sync`);\n} else if (status === 'no_annotations') {\n  console.log(`ℹ️ No annotations yet for ${d} — skipping sync`);\n} else {\n  console.warn(`⚠️ Render returned unexpected status '${status}' for ${d}`);\n}\nreturn $input.all();"
+        "jsCode": "const status = $json.status;\nconst d = $json.date || 'unknown';\nif (status === 'not_found') {\n  console.log(`ℹ️ No planner found for ${d} — skipping sync`);\n} else if (status === 'no_annotations') {\n  console.log(`ℹ️ No annotations yet for ${d} — skipping sync`);\n} else if ($json.error) {\n  console.warn(`⚠️ Render service error for ${d}: ${$json.error}`);\n} else {\n  console.warn(`⚠️ Render returned unexpected status '${status}' for ${d}`);\n}\nreturn [];"
       },
       "id": "skip-log",
       "name": "Log Skip Reason",
@@ -139,7 +140,7 @@
       "id": "route-action",
       "name": "Complete or Add?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 1,
       "position": [1540, 200]
     },
 
@@ -194,7 +195,7 @@
       "id": "was-checked",
       "name": "Was Already Checked?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 1,
       "position": [1980, 300]
     },
 
