@@ -23,18 +23,14 @@ logger = logging.getLogger(__name__)
 RM_WIDTH  = 1404.0
 RM_HEIGHT = 1872.0
 
-# PDF page dimensions matching the planner template (157.7947 mm × 210.3929 mm)
-PAGE_W_PT = 157.7947 * mm
-PAGE_H_PT = 210.3929 * mm
-
 # Render DPI for the output PNG — 226 is reMarkable native, lower is fine for vision
 RENDER_DPI = 150
 
 
-def _rm_to_pdf(x: float, y: float) -> tuple[float, float]:
+def _rm_to_pdf(x: float, y: float, page_w_pt: float, page_h_pt: float) -> tuple[float, float]:
     """Map reMarkable device coordinates to PDF points (origin bottom-left)."""
-    pdf_x = x * (PAGE_W_PT / RM_WIDTH)
-    pdf_y = PAGE_H_PT - y * (PAGE_H_PT / RM_HEIGHT)
+    pdf_x = x * (page_w_pt / RM_WIDTH)
+    pdf_y = page_h_pt - y * (page_h_pt / RM_HEIGHT)
     return pdf_x, pdf_y
 
 
@@ -61,16 +57,16 @@ def _iter_children(node) -> list:
     return list(children)
 
 
-def _render_node(c: canvas.Canvas, node) -> None:
+def _render_node(c: canvas.Canvas, node, page_w_pt: float, page_h_pt: float) -> None:
     """Recursively walk a scene node (SceneTree, Group) and draw all Lines."""
     for child in _iter_children(node):
         if isinstance(child, si.Group):
-            _render_node(c, child)
+            _render_node(c, child, page_w_pt, page_h_pt)
         elif isinstance(child, si.Line):
-            _draw_line(c, child)
+            _draw_line(c, child, page_w_pt, page_h_pt)
 
 
-def _draw_line(c: canvas.Canvas, line: si.Line) -> None:
+def _draw_line(c: canvas.Canvas, line: si.Line, page_w_pt: float, page_h_pt: float) -> None:
     """Draw a single stroke line onto the canvas."""
     points = line.points if hasattr(line, "points") else []
     if not points:
@@ -85,7 +81,7 @@ def _draw_line(c: canvas.Canvas, line: si.Line) -> None:
     path = c.beginPath()
     first = True
     for pt in points:
-        px, py = _rm_to_pdf(pt.x, pt.y)
+        px, py = _rm_to_pdf(pt.x, pt.y, page_w_pt, page_h_pt)
         if first:
             path.moveTo(px, py)
             first = False
@@ -95,13 +91,13 @@ def _draw_line(c: canvas.Canvas, line: si.Line) -> None:
     c.drawPath(path, stroke=1, fill=0)
 
 
-def _build_stroke_overlay(rm_data: bytes) -> bytes:
+def _build_stroke_overlay(rm_data: bytes, page_w_pt: float, page_h_pt: float) -> bytes:
     """
     Parse .rm stroke data and render it to a transparent PDF overlay.
     Returns PDF bytes.
     """
     buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=(PAGE_W_PT, PAGE_H_PT))
+    c = canvas.Canvas(buf, pagesize=(page_w_pt, page_h_pt))
     c.setStrokeColorRGB(0, 0, 0)
     c.setFillColorRGB(0, 0, 0)
 
@@ -109,7 +105,6 @@ def _build_stroke_overlay(rm_data: bytes) -> bytes:
     try:
         tree = rmscene.read_tree(io.BytesIO(rm_data))
 
-        # Count strokes before drawing for diagnostic logging
         def _count(node):
             n = 0
             for child in _iter_children(node):
@@ -120,8 +115,8 @@ def _build_stroke_overlay(rm_data: bytes) -> bytes:
             return n
 
         stroke_count = _count(tree)
-        logger.info("Parsed %d stroke(s) from .rm data", stroke_count)
-        _render_node(c, tree)
+        logger.info("Parsed %d stroke(s) from .rm data (page %.0fx%.0fpt)", stroke_count, page_w_pt, page_h_pt)
+        _render_node(c, tree, page_w_pt, page_h_pt)
     except Exception as e:
         logger.warning("Failed to parse .rm data: %s", e)
 
@@ -145,6 +140,13 @@ def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> byt
     """
     base_pdf_bytes = base64.b64decode(base_pdf_b64)
 
+    # Read actual page dimensions from the PDF (don't hardcode them)
+    base_reader = PdfReader(io.BytesIO(base_pdf_bytes))
+    page0 = base_reader.pages[0]
+    page_w_pt = float(page0.mediabox.width)
+    page_h_pt = float(page0.mediabox.height)
+    logger.info("PDF page size: %.1f x %.1f pt", page_w_pt, page_h_pt)
+
     # If there are no stroke files, just render the base PDF as-is
     if not rm_files_b64:
         images = convert_from_bytes(base_pdf_bytes, dpi=RENDER_DPI, first_page=1, last_page=1)
@@ -152,13 +154,12 @@ def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> byt
         images[0].save(buf, format="PNG")
         return buf.getvalue()
 
-    # Build stroke overlay for page 0
+    # Build stroke overlay for page 0 using the actual page dimensions
     rm_b64 = rm_files_b64.get("0") or next(iter(rm_files_b64.values()))
     rm_data = base64.b64decode(rm_b64)
-    overlay_bytes = _build_stroke_overlay(rm_data)
+    overlay_bytes = _build_stroke_overlay(rm_data, page_w_pt, page_h_pt)
 
-    # Merge overlay onto the base PDF's first page
-    base_reader    = PdfReader(io.BytesIO(base_pdf_bytes))
+    # Merge overlay onto the base PDF's first page (base_reader already open above)
     overlay_reader = PdfReader(io.BytesIO(overlay_bytes))
 
     writer = PdfWriter()
