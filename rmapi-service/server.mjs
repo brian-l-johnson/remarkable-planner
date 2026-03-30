@@ -36,13 +36,14 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
 
     await managePlanners(api, today);
 
-    const entry = await api.uploadPdf(filename, req.file.buffer.buffer);
+    // Buffer extends Uint8Array — compatible with v9's uploadPdf signature
+    const entry = await api.uploadPdf(filename, req.file.buffer);
 
-    console.log(`✅ Uploaded "${filename}" (docID: ${entry.docID})`);
+    console.log(`✅ Uploaded "${filename}" (id: ${entry.hash})`);
     res.json({
       status:      "ok",
       uploaded_as: filename,
-      doc_id:      entry.docID,
+      doc_id:      entry.hash,
       date:        dateStr,
     });
   } catch (err) {
@@ -64,31 +65,23 @@ app.get("/download/:date", async (req, res) => {
   try {
     const api = await getApi();
 
-    // listItems() uses the current sync API and returns hash + metadata in one call
+    // listItems() returns all entries with id, hash, visibleName, type, parent
     const items = await api.listItems();
-    const item = items.find(
-      i => i.type !== "CollectionType" && i.visibleName === targetName
-    );
+    const doc   = items.find(i => i.type === "DocumentType" && i.visibleName === targetName);
 
-    if (!item) {
+    if (!doc) {
       return res.status(404).json({ status: "not_found", message: `No document named "${targetName}"` });
     }
 
-    if (!item.hash) {
-      return res.status(404).json({ status: "not_found", message: "Document found but has no hash (may still be syncing)" });
-    }
-
-    // Download the raw document zip bundle
-    const docData = await api.getDocument(item.hash);
-    const buf = Buffer.from(docData instanceof Uint8Array ? docData : new Uint8Array(docData));
-
-    const zip = new AdmZip(buf);
-    const entries = zip.getEntries();
+    // getDocument() returns the full document bundle as a zip Uint8Array
+    const zipBytes = await api.getDocument(doc.hash);
+    const zip      = new AdmZip(Buffer.from(zipBytes));
+    const entries  = zip.getEntries();
 
     // Extract base PDF and .rm stroke files
-    let basePdf = null;
-    let contentMetadata = null;
-    const rmFiles = {};
+    let basePdf         = null;
+    let contentMetadata = {};
+    const rmFiles       = {};
 
     for (const entry of entries) {
       const name = entry.entryName;
@@ -96,21 +89,17 @@ app.get("/download/:date", async (req, res) => {
       if (name.endsWith(".pdf")) {
         basePdf = entry.getData().toString("base64");
       } else if (name.endsWith(".content")) {
-        try {
-          contentMetadata = JSON.parse(entry.getData().toString("utf8"));
-        } catch {
-          // non-fatal
-        }
+        try { contentMetadata = JSON.parse(entry.getData().toString("utf8")); } catch { /* non-fatal */ }
       } else if (name.endsWith(".rm")) {
-        // Entry name is like "{uuid}/{pageIndex}.rm" — use page index as key
+        // Paths are like "{id}/{pageUUID}.rm" — key by index in order found
         const pageMatch = name.match(/\/(\d+)\.rm$/);
-        const pageKey = pageMatch ? pageMatch[1] : name;
+        const pageKey   = pageMatch ? pageMatch[1] : String(Object.keys(rmFiles).length);
         rmFiles[pageKey] = entry.getData().toString("base64");
       }
     }
 
     if (!basePdf) {
-      return res.status(422).json({ status: "error", message: "Document has no PDF layer (epub or unsupported format?)" });
+      return res.status(422).json({ status: "error", message: "Document has no PDF layer" });
     }
 
     const hasAnnotations = Object.keys(rmFiles).length > 0;
@@ -118,12 +107,12 @@ app.get("/download/:date", async (req, res) => {
 
     res.json({
       status: "ok",
-      documentId:      item.documentId,
-      visibleName:     targetName,
+      documentId:  doc.id,
+      visibleName: targetName,
       hasAnnotations,
       basePdf,
       rmFiles,
-      contentMetadata: contentMetadata ?? {},
+      contentMetadata,
     });
 
   } catch (err) {
@@ -134,12 +123,12 @@ app.get("/download/:date", async (req, res) => {
 
 async function managePlanners(api, today) {
   try {
-    // listItems() uses the current sync API and includes hash + metadata
-    const allItems = await api.listItems();
+    // listItems() returns all entries — replaces the deprecated getEntriesMetadata()
+    const items = await api.listItems();
 
     // Find the archive folder — must already exist on the device
-    const archiveFolder = allItems.find(
-      e => e.type === "CollectionType" && e.visibleName === ARCHIVE_FOLDER
+    const archiveFolder = items.find(
+      i => i.type === "CollectionType" && i.visibleName === ARCHIVE_FOLDER
     );
 
     if (!archiveFolder) {
@@ -157,24 +146,25 @@ async function managePlanners(api, today) {
     let archived = 0;
     let deleted  = 0;
 
-    for (const doc of allItems) {
-      if (doc.type === "CollectionType") continue;
+    for (const doc of items) {
+      if (doc.type !== "DocumentType") continue;
 
       const match = doc.visibleName.match(/^Daily Planner (\d{4}-\d{2}-\d{2})$/);
       if (!match) continue;
 
       const plannerDate = new Date(match[1]);
 
-      // In archive folder and older than DELETE_DAYS → trash
-      if (doc.parent === archiveFolder.documentId && plannerDate < deleteCutoff) {
+      // In archive and older than DELETE_DAYS → trash
+      // In v9, move() takes hash as first arg and destination id as second
+      if (doc.parent === archiveFolder.id && plannerDate < deleteCutoff) {
         console.log(`Trashing "${doc.visibleName}" (>${DELETE_DAYS} days old)...`);
-        await api.move(doc.documentId, "trash");
+        await api.move(doc.hash, "trash");
         deleted++;
       }
       // In root and older than KEEP_DAYS → move to archive
       else if ((doc.parent === "" || doc.parent == null) && plannerDate < archiveCutoff) {
         console.log(`Archiving "${doc.visibleName}" (>${KEEP_DAYS} days old)...`);
-        await api.move(doc.documentId, archiveFolder.documentId);
+        await api.move(doc.hash, archiveFolder.id);
         archived++;
       }
     }
