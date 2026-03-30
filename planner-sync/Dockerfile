@@ -10,7 +10,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py renderer.py recognizer.py ha_sync.py ./
+COPY app.py renderer.py ./
 
 EXPOSE 8080
 
