@@ -30,13 +30,18 @@ RENDER_DPI = 150
 def _rm_to_pdf(x: float, y: float, page_w_pt: float, page_h_pt: float) -> tuple[float, float]:
     """Map reMarkable PDF-annotation coordinates to PDF points (origin bottom-left).
 
-    When the reMarkable annotates a PDF document, X is stored directly in PDF
-    points (0 … page_width_pt, left→right).  Y is stored in reMarkable screen
-    pixels (0 … 1872, top→bottom) and must be scaled then flipped to match
-    the PDF bottom-left origin convention.
+    Coordinate system discovered empirically:
+    - X is stored directly in PDF points (0 … page_width_pt, left→right).
+    - Y is stored in reMarkable screen pixels (0 … 1872, top→bottom), BUT
+      y=0 corresponds to a point ~137px ABOVE the actual top of the PDF page
+      (the reMarkable PDF viewer reserves that space for its toolbar/UI chrome).
+      We compensate by adding RM_PDF_Y_OFFSET before scaling so that strokes
+      land on the correct PDF coordinates.
     """
-    pdf_x = x                                          # already in PDF points
-    pdf_y = page_h_pt - y * (page_h_pt / RM_HEIGHT)   # RM px → PDF pt, flip Y
+    # 137 px ≈ the reMarkable PDF viewer top UI offset, empirically calibrated
+    RM_PDF_Y_OFFSET = 137.0
+    pdf_x = x                                                            # already in PDF points
+    pdf_y = page_h_pt - (y + RM_PDF_Y_OFFSET) * (page_h_pt / RM_HEIGHT)  # shift + scale + flip
     return pdf_x, pdf_y
 
 
