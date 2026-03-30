@@ -64,21 +64,17 @@ app.get("/download/:date", async (req, res) => {
   try {
     const api = await getApi();
 
-    // Find the document in metadata (root or archive)
-    const allMeta = await api.getEntriesMetadata();
-    const docMeta = allMeta.find(
-      e => e.type !== "CollectionType" && e.visibleName === targetName
+    // listItems() uses the current sync API and returns hash + metadata in one call
+    const items = await api.listItems();
+    const item = items.find(
+      i => i.type !== "CollectionType" && i.visibleName === targetName
     );
 
-    if (!docMeta) {
+    if (!item) {
       return res.status(404).json({ status: "not_found", message: `No document named "${targetName}"` });
     }
 
-    // Get all items (includes hash values needed for content download)
-    const items = await api.listItems();
-    const item = items.find(i => i.documentId === docMeta.documentId);
-
-    if (!item?.hash) {
+    if (!item.hash) {
       return res.status(404).json({ status: "not_found", message: "Document found but has no hash (may still be syncing)" });
     }
 
@@ -122,7 +118,7 @@ app.get("/download/:date", async (req, res) => {
 
     res.json({
       status: "ok",
-      documentId:      docMeta.documentId,
+      documentId:      item.documentId,
       visibleName:     targetName,
       hasAnnotations,
       basePdf,
@@ -138,10 +134,11 @@ app.get("/download/:date", async (req, res) => {
 
 async function managePlanners(api, today) {
   try {
-    const allMeta = await api.getEntriesMetadata();
+    // listItems() uses the current sync API and includes hash + metadata
+    const allItems = await api.listItems();
 
     // Find the archive folder — must already exist on the device
-    const archiveFolder = allMeta.find(
+    const archiveFolder = allItems.find(
       e => e.type === "CollectionType" && e.visibleName === ARCHIVE_FOLDER
     );
 
@@ -160,7 +157,7 @@ async function managePlanners(api, today) {
     let archived = 0;
     let deleted  = 0;
 
-    for (const doc of allMeta) {
+    for (const doc of allItems) {
       if (doc.type === "CollectionType") continue;
 
       const match = doc.visibleName.match(/^Daily Planner (\d{4}-\d{2}-\d{2})$/);
