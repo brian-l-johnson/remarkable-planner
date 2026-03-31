@@ -79,23 +79,19 @@ def _iter_children(node) -> list:
 def _is_user_stroke(line: si.Line) -> bool:
     """Return True if this Line looks like a real user annotation.
 
-    The reMarkable PDF viewer embeds tiny "corner registration marks" in the
-    .rm file (via partially-decoded block type 13).  These have x coordinates
-    that are negative (off the left edge of the RM screen) or y coordinates
-    that fall inside the top/bottom toolbar chrome area.  We filter them out
-    so they don't appear as spurious marks on the rendered page.
+    The reMarkable PDF viewer embeds tiny registration marks near y=0
+    (the top toolbar chrome area) in partially-decoded block type 13 data.
+    These have y centroids very close to 0 and would render in the page
+    header — we skip them.  All other strokes (including those with
+    negative x values, which map correctly via RM_PDF_X_OFFSET) are kept.
     """
     points = getattr(line, "points", [])
     if not points:
         return False
-    xs = [p.x for p in points]
     ys = [p.y for p in points]
-    # Any negative x → off-screen (RM x is always 0-1404 for real strokes)
-    if min(xs) < 0:
-        return False
-    # y very close to the screen top (toolbar) or bottom edge → corner mark
     cy = sum(ys) / len(ys)
-    if cy < 50 or cy > RM_HEIGHT - 50:
+    # Filter only the viewer chrome marks that sit in the top toolbar area
+    if cy < 50:
         return False
     return True
 
