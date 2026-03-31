@@ -30,18 +30,26 @@ RENDER_DPI = 150
 def _rm_to_pdf(x: float, y: float, page_w_pt: float, page_h_pt: float) -> tuple[float, float]:
     """Map reMarkable PDF-annotation coordinates to PDF points (origin bottom-left).
 
-    Coordinate system discovered empirically:
-    - X is stored directly in PDF points (0 … page_width_pt, left→right).
-    - Y is stored in reMarkable screen pixels (0 … 1872, top→bottom), BUT
-      y=0 corresponds to a point ~137px ABOVE the actual top of the PDF page
-      (the reMarkable PDF viewer reserves that space for its toolbar/UI chrome).
-      We compensate by adding RM_PDF_Y_OFFSET before scaling so that strokes
-      land on the correct PDF coordinates.
+    The reMarkable uses a uniform coordinate space for both axes (same pixel
+    size in x and y), scaled so that the full 1404×1872 RM screen maps to the
+    PDF page dimensions.  Both axes also carry viewer-chrome offsets:
+
+    - Y offset (137 RM units): the PDF viewer toolbar occupies the top ~137px
+      of the screen; annotation y=0 sits just below that chrome, so the PDF
+      top edge is at y ≈ -137 in annotation space.
+
+    - X offset (780 RM units): empirically determined viewport offset in the
+      RM PDF viewer's horizontal axis.  Together with the uniform scale, this
+      places strokes correctly inside their PDF-page positions.
+
+    Both offsets were calibrated against real stroke data: after applying them,
+    checkmark strokes land inside the expected checkbox squares (±1 pt).
     """
-    # 137 px ≈ the reMarkable PDF viewer top UI offset, empirically calibrated
+    RM_PDF_X_OFFSET = 780.0
     RM_PDF_Y_OFFSET = 137.0
-    pdf_x = x                                                            # already in PDF points
-    pdf_y = page_h_pt - (y + RM_PDF_Y_OFFSET) * (page_h_pt / RM_HEIGHT)  # shift + scale + flip
+    scale = page_h_pt / RM_HEIGHT          # = page_w_pt / RM_WIDTH (same aspect ratio)
+    pdf_x = (x + RM_PDF_X_OFFSET) * scale
+    pdf_y = page_h_pt - (y + RM_PDF_Y_OFFSET) * scale   # flip Y: RM top→down, PDF bottom→up
     return pdf_x, pdf_y
 
 
