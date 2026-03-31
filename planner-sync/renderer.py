@@ -76,32 +76,12 @@ def _iter_children(node) -> list:
     return list(children)
 
 
-def _is_user_stroke(line: si.Line) -> bool:
-    """Return True if this Line looks like a real user annotation.
-
-    The reMarkable PDF viewer embeds tiny registration marks near y=0
-    (the top toolbar chrome area) in partially-decoded block type 13 data.
-    These have y centroids very close to 0 and would render in the page
-    header — we skip them.  All other strokes (including those with
-    negative x values, which map correctly via RM_PDF_X_OFFSET) are kept.
-    """
-    points = getattr(line, "points", [])
-    if not points:
-        return False
-    ys = [p.y for p in points]
-    cy = sum(ys) / len(ys)
-    # Filter only the viewer chrome marks that sit in the top toolbar area
-    if cy < 50:
-        return False
-    return True
-
-
 def _render_node(c: canvas.Canvas, node, page_w_pt: float, page_h_pt: float) -> None:
     """Recursively walk a scene node (SceneTree, Group) and draw all Lines."""
     for child in _iter_children(node):
         if isinstance(child, si.Group):
             _render_node(c, child, page_w_pt, page_h_pt)
-        elif isinstance(child, si.Line) and _is_user_stroke(child):
+        elif isinstance(child, si.Line):
             _draw_line(c, child, page_w_pt, page_h_pt)
 
 
@@ -147,7 +127,7 @@ def _build_stroke_overlay(rm_data: bytes, page_w_pt: float, page_h_pt: float) ->
         def _count(node):
             n = 0
             for child in _iter_children(node):
-                if isinstance(child, si.Line) and _is_user_stroke(child):
+                if isinstance(child, si.Line):
                     n += 1
                 elif isinstance(child, si.Group):
                     n += _count(child)
