@@ -18,7 +18,7 @@ from datetime import date
 import httpx
 from flask import Flask, jsonify, request
 
-from renderer import render_annotated_png
+from renderer import render_annotated_png, debug_stroke_coords
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -88,6 +88,32 @@ def render():
         "date":   render_date,
         "png":    base64.b64encode(png_bytes).decode(),
     })
+
+
+@app.post("/debug-coords")
+def debug_coords():
+    """Dump raw RM stroke coordinates for calibrating the coordinate transform."""
+    body        = request.get_json(silent=True) or {}
+    render_date = body.get("date") or date.today().isoformat()
+
+    try:
+        dl_resp = httpx.get(
+            f"{RMAPI_SERVICE_URL}/download/{render_date}",
+            timeout=60.0,
+        )
+    except httpx.RequestError as e:
+        return jsonify({"status": "error", "message": str(e)}), 502
+
+    if dl_resp.status_code != 200:
+        return jsonify({"status": "error", "message": f"HTTP {dl_resp.status_code}"}), 502
+
+    dl = dl_resp.json()
+    if not dl.get("hasAnnotations"):
+        return jsonify({"status": "no_annotations", "date": render_date})
+
+    result = debug_stroke_coords(dl["basePdf"], dl["rmFiles"])
+    result["date"] = render_date
+    return jsonify(result)
 
 
 if __name__ == "__main__":
