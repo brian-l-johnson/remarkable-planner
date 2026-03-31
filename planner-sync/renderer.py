@@ -30,26 +30,18 @@ RENDER_DPI = 150
 def _rm_to_pdf(x: float, y: float, page_w_pt: float, page_h_pt: float) -> tuple[float, float]:
     """Map reMarkable PDF-annotation coordinates to PDF points (origin bottom-left).
 
-    The reMarkable uses a uniform coordinate space for both axes (same pixel
-    size in x and y), scaled so that the full 1404×1872 RM screen maps to the
-    PDF page dimensions.  Both axes also carry viewer-chrome offsets:
+    The reMarkable renders PDFs at its native 226 DPI.  The annotation
+    coordinate system is centred horizontally (x=0 is the middle of the
+    screen) with y=0 at the top of the visible PDF viewport.
 
-    - Y offset (137 RM units): the PDF viewer toolbar occupies the top ~137px
-      of the screen; annotation y=0 sits just below that chrome, so the PDF
-      top edge is at y ≈ -137 in annotation space.
-
-    - X offset (780 RM units): empirically determined viewport offset in the
-      RM PDF viewer's horizontal axis.  Together with the uniform scale, this
-      places strokes correctly inside their PDF-page positions.
-
-    Both offsets were calibrated against real stroke data: after applying them,
-    checkmark strokes land inside the expected checkbox squares (±1 pt).
+    Calibrated against corner marks, full-span lines, and checkbox strokes
+    on 2026-03-31 — corner marks land within ~7 pt of the page edges (the
+    residual is the user drawing slightly inside the corner).
     """
-    RM_PDF_X_OFFSET = 780.0
-    RM_PDF_Y_OFFSET = 137.0
-    scale = page_h_pt / RM_HEIGHT          # = page_w_pt / RM_WIDTH (same aspect ratio)
-    pdf_x = (x + RM_PDF_X_OFFSET) * scale
-    pdf_y = page_h_pt - (y + RM_PDF_Y_OFFSET) * scale   # flip Y: RM top→down, PDF bottom→up
+    RM_DPI = 226.0
+    scale = 72.0 / RM_DPI                # PDF points per RM unit
+    pdf_x = x * scale + page_w_pt / 2.0  # centred origin → left-edge origin
+    pdf_y = page_h_pt - y * scale         # flip Y: RM top→down, PDF bottom→up
     return pdf_x, pdf_y
 
 
