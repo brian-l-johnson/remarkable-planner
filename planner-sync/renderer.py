@@ -145,6 +145,66 @@ def _build_stroke_overlay(rm_data: bytes, page_w_pt: float, page_h_pt: float) ->
     return buf.getvalue()
 
 
+def debug_stroke_coords(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> dict:
+    """Dump raw RM stroke coordinates for calibration diagnostics."""
+    pdf_bytes = base64.b64decode(base_pdf_b64)
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    page = reader.pages[0]
+    w_pt = float(page.mediabox.width)
+    h_pt = float(page.mediabox.height)
+
+    rm_b64 = rm_files_b64.get("0") or next(iter(rm_files_b64.values()))
+    rm_data = base64.b64decode(rm_b64)
+    tree = rmscene.read_tree(io.BytesIO(rm_data))
+
+    lines = []
+    def _collect(node):
+        for child in _iter_children(node):
+            if isinstance(child, si.Group):
+                _collect(child)
+            elif isinstance(child, si.Line):
+                lines.append(child)
+    _collect(tree)
+
+    all_x, all_y = [], []
+    strokes = []
+    for i, line in enumerate(lines):
+        pts = line.points if hasattr(line, "points") else []
+        if not pts:
+            continue
+        xs = [p.x for p in pts]
+        ys = [p.y for p in pts]
+        all_x.extend(xs)
+        all_y.extend(ys)
+        strokes.append({
+            "index": i,
+            "num_points": len(pts),
+            "x_min": round(min(xs), 1),
+            "x_max": round(max(xs), 1),
+            "y_min": round(min(ys), 1),
+            "y_max": round(max(ys), 1),
+            "cx": round((min(xs) + max(xs)) / 2, 1),
+            "cy": round((min(ys) + max(ys)) / 2, 1),
+        })
+
+    result = {
+        "pdf_w_pt": round(w_pt, 1),
+        "pdf_h_pt": round(h_pt, 1),
+        "pdf_aspect": round(w_pt / h_pt, 4),
+        "rm_aspect": round(1404 / 1872, 4),
+        "total_strokes": len(strokes),
+        "strokes": strokes,
+    }
+    if all_x:
+        result["global_x_min"] = round(min(all_x), 1)
+        result["global_x_max"] = round(max(all_x), 1)
+        result["global_x_span"] = round(max(all_x) - min(all_x), 1)
+        result["global_y_min"] = round(min(all_y), 1)
+        result["global_y_max"] = round(max(all_y), 1)
+        result["global_y_span"] = round(max(all_y) - min(all_y), 1)
+    return result
+
+
 def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> bytes:
     """
     Merge handwriting strokes onto the base PDF page and return PNG bytes.
