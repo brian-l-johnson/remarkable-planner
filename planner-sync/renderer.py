@@ -26,6 +26,15 @@ RM_HEIGHT = 1872.0
 # Render DPI for the output PNG — 226 is reMarkable native, lower is fine for vision
 RENDER_DPI = 150
 
+# Crop boxes (left, top, right, bottom) in pixels at RENDER_DPI=150.
+# Page is ~932×1242px. Right column starts at ~376px (3mm padding + 60.7mm schedule col).
+# Columns start at ~197px (padding + 18mm header + 2mm gap + ~49px banner + 2mm gap).
+# Column height is ~932px; todo and notes each take half (~466px each).
+SECTION_CROPS = {
+    "todo":  (376, 190, 932, 680),   # right col, top half — includes col header + some margin
+    "notes": (376, 660, 932, 1135),  # right col, bottom half
+}
+
 
 def _rm_to_pdf(x: float, y: float, page_w_pt: float, page_h_pt: float) -> tuple[float, float]:
     """Map reMarkable PDF-annotation coordinates to PDF points (origin bottom-left).
@@ -197,7 +206,7 @@ def debug_stroke_coords(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> dict
     return result
 
 
-def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> bytes:
+def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str], section: str | None = None) -> bytes: fd6f5d0 (feat: add section cropping to /render endpoint for vision efficiency)
     """
     Merge handwriting strokes onto the base PDF page and return PNG bytes.
 
@@ -221,8 +230,11 @@ def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> byt
     # If there are no stroke files, just render the base PDF as-is
     if not rm_files_b64:
         images = convert_from_bytes(base_pdf_bytes, dpi=RENDER_DPI, first_page=1, last_page=1)
+        image = images[0]
+        if section and section in SECTION_CROPS:
+            image = image.crop(SECTION_CROPS[section])
         buf = io.BytesIO()
-        images[0].save(buf, format="PNG")
+        image.save(buf, format="PNG")
         return buf.getvalue()
 
     # Build stroke overlay for page 0 using the actual page dimensions
@@ -244,6 +256,9 @@ def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> byt
 
     # Convert merged PDF to PNG
     images = convert_from_bytes(merged_bytes, dpi=RENDER_DPI, first_page=1, last_page=1)
+    image = images[0]
+    if section and section in SECTION_CROPS:
+        image = image.crop(SECTION_CROPS[section])
     out_buf = io.BytesIO()
-    images[0].save(out_buf, format="PNG")
+    image.save(out_buf, format="PNG")
     return out_buf.getvalue()
