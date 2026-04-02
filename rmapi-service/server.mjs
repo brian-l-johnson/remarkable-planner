@@ -81,6 +81,41 @@ app.post("/upload", upload.single("pdf"), async (req, res) => {
   }
 });
 
+// GET /check/:date — Return document metadata without downloading the zip.
+// Use this to check lastModified before deciding whether to run OCR.
+app.get("/check/:date", async (req, res) => {
+  const { date } = req.params;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ status: "error", message: "Date must be YYYY-MM-DD" });
+  }
+
+  const targetName = `${PLANNER_PREFIX}-${date}`;
+
+  try {
+    const api = await getApi();
+
+    const items   = await listItemsMeta(api);
+    const matches = items.filter(i => i.type === "DocumentType" && i.visibleName === targetName);
+
+    if (matches.length === 0) {
+      return res.status(404).json({ status: "not_found", message: `No document named "${targetName}"` });
+    }
+
+    const doc = matches.sort((a, b) => Number(b.lastModified) - Number(a.lastModified))[0];
+
+    res.json({
+      status:       "ok",
+      documentId:   doc.id,
+      visibleName:  targetName,
+      lastModified: doc.lastModified,
+    });
+
+  } catch (err) {
+    console.error("Check failed:", err);
+    res.status(500).json({ status: "error", message: err.message });
+  }
+});
+
 // GET /download/:date — Download an annotated planner document by date (YYYY-MM-DD).
 // Returns JSON with base64-encoded base PDF and .rm stroke files per page.
 app.get("/download/:date", async (req, res) => {
