@@ -40,7 +40,8 @@ def render():
     Download the annotated planner for a given date and return a base64 PNG.
 
     Request body (JSON):
-        date  (optional) — YYYY-MM-DD, defaults to today
+        date    (optional) — YYYY-MM-DD, defaults to today
+        section (optional) — "todo" or "notes" to crop to that region; omit for full page
 
     Response (all HTTP 200):
         {"status": "ok",             "date": "...", "png": "<base64 PNG>"}
@@ -51,6 +52,7 @@ def render():
     """
     body        = request.get_json(silent=True) or {}
     render_date = body.get("date") or date.today().isoformat()
+    section     = body.get("section") or None   # "todo", "notes", or absent for full page
 
     # ── 1. Download from reMarkable Cloud via rmapi-service ──────────────────
     logger.info("Downloading planner for %s ...", render_date)
@@ -77,7 +79,7 @@ def render():
     # ── 2. Render .rm strokes onto base PDF → PNG ─────────────────────────────
     logger.info("Rendering annotated PNG ...")
     try:
-        png_bytes = render_annotated_png(dl["basePdf"], dl["rmFiles"])
+        png_bytes = render_annotated_png(dl["basePdf"], dl["rmFiles"], section=section)
     except Exception as e:
         logger.exception("Render failed")
         return jsonify({"status": "render_error", "message": str(e)}), 500
