@@ -18,7 +18,7 @@ spec:
       containers:
         - name: planner-sync
           # Replace YOUR_GITHUB_USERNAME with your GitHub username
-          image: ghcr.io/YOUR_GITHUB_USERNAME/remarkable-planner-sync:latest
+          image: ghcr.io/brian-l-johnson/remarkable-planner-sync:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
