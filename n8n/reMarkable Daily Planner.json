@@ -1,0 +1,517 @@
+{
+  "name": "reMarkable Daily Planner",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "a11072c7-f5e1-4c3d-94b5-c15710379de6",
+      "name": "Every day at 6am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -688,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "state",
+        "entityId": "sensor.weather_forecast_today_condition"
+      },
+      "id": "3a356c1c-3fa5-46d8-a632-42fbf45621d2",
+      "name": "HA: Weather Condition",
+      "type": "n8n-nodes-base.homeAssistant",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        416
+      ],
+      "credentials": {
+        "homeAssistantApi": {
+          "id": "Drycbj47TbjwnlVj",
+          "name": "Home Assistant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "state",
+        "entityId": "sensor.weather_forecast_today_high"
+      },
+      "id": "d2013d60-d0e5-4129-a28c-a0b8f5b88944",
+      "name": "HA: Weather High",
+      "type": "n8n-nodes-base.homeAssistant",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        416
+      ],
+      "credentials": {
+        "homeAssistantApi": {
+          "id": "Drycbj47TbjwnlVj",
+          "name": "Home Assistant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "state",
+        "entityId": "sensor.weather_forecast_today_low"
+      },
+      "id": "58b897d3-3c85-4be9-a406-f73e560de6e7",
+      "name": "HA: Weather Low",
+      "type": "n8n-nodes-base.homeAssistant",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        416
+      ],
+      "credentials": {
+        "homeAssistantApi": {
+          "id": "Drycbj47TbjwnlVj",
+          "name": "Home Assistant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "brian.l.johnson@gmail.com",
+          "mode": "list",
+          "cachedResultName": "brian.l.johnson@gmail.com"
+        },
+        "timeMin": "={{ $now.startOf('day').toISO() }}",
+        "timeMax": "={{ $now.endOf('day').toISO() }}",
+        "options": {
+          "orderBy": "startTime"
+        }
+      },
+      "id": "5328a51f-2a57-4e39-9add-b68a797c0721",
+      "name": "Google Calendar: Today",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        416
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "vQBJtFGOcaqyRtif",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://pdf-generator.remarkable.svc.cluster.local/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "63eadd00-a106-40e0-9821-9536d6966f85",
+      "name": "Generate PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://rmapi-uploader.remarkable.svc.cluster.local/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "pdf",
+              "inputDataFieldName": "=data"
+            },
+            {
+              "name": "filename",
+              "value": "=planner-{{ $now.format('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "35be3825-e657-4c83-8ff4-c8421051ac9d",
+      "name": "Upload to reMarkable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1904,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "value2": "ok"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "337cd73a-21e3-4b34-98a2-104bc7b11e09",
+      "name": "Check Result",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('✅ Planner uploaded:', $json.uploaded_to);\nreturn $input.all();"
+      },
+      "id": "1bc869dd-f45b-4449-b84f-d1f8ee764ffe",
+      "name": "Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2352,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.error('❌ Upload failed:', $json.message);\nreturn $input.all();"
+      },
+      "id": "7e703a6f-dded-4918-b058-5559f71e2450",
+      "name": "Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2352,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "family03038077178532309263@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Family"
+        },
+        "timeMin": "={{ $now.startOf('day').toISO() }}",
+        "timeMax": "={{ $now.endOf('day').toISO() }}",
+        "options": {
+          "orderBy": "startTime"
+        }
+      },
+      "id": "5ea9b7f0-d68b-4ffe-b6dc-e8e5f346f0f9",
+      "name": "Google Calendar: Family",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        432,
+        416
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "vQBJtFGOcaqyRtif",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://homeassistant.home:8123/api/services/todo/get_items?return_response=true",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"entity_id\": \"todo.tasks\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        656,
+        416
+      ],
+      "id": "144bb926-5808-4759-a4e7-414bb66ea361",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "JFRJ7aufwjrKcjdc",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const summary = $input.first().json.text.trim();\nconst payload = $('Build Payload').first().json;\nreturn [{ json: { ...payload, ai_summary: summary } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        416
+      ],
+      "id": "ffc79985-de4d-4c63-a1b2-94fbfc26f6ea",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Write one short motivational sentence (~20 words) summarizing what needs to be done on this day. Day: ' + $now.format('EEEE') + '. Weather: ' + $json.weather_condition + ', ' + $json.weather_high + '°F high. Events: ' + ($json.events.length ? $json.events.map(e => e.title).join(', ') : 'no scheduled events') + '. Tasks: ' + ($json.todos.length ? $json.todos.map(t => t.text).join(', ') : 'no tasks') + '. Reply with ONLY the sentence, no quotes.' }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1104,
+        416
+      ],
+      "id": "da4045d6-beef-4388-a893-cca002aa28a5",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-haiku-4.5",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        640
+      ],
+      "id": "45879864-a33b-4438-88f1-a4f81fe08256",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "GJkKbfElkCFxIIFF",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const condition = $('HA: Weather Condition').first().json;\nconst high      = $('HA: Weather High').first().json;\nconst low       = $('HA: Weather Low').first().json;\n\nfunction parseLocalTime(dt, tz) {\n  if (dt.endsWith('Z')) {\n    const d = new Date(dt);\n    const local = new Intl.DateTimeFormat('en-US', {\n      timeZone: 'America/Chicago',  // always convert to Chicago, ignore event's tz field\n      hour: 'numeric',\n      minute: 'numeric',\n      hour12: false,\n    }).format(d);\n    const [h, m] = local.split(':').map(Number);\n    return { hours: h, minutes: m };\n  }\n  const t = dt.split('T')[1];\n  return { hours: parseInt(t.slice(0,2), 10), minutes: parseInt(t.slice(3,5), 10) };\n}\n\nconst colors = ['cal-blue', 'cal-green', 'cal-amber'];\n\nconst calItems = [\n  ...$('Google Calendar: Today').all(),\n  ...$('Google Calendar: Family').all(),\n].filter((item, idx, arr) =>\n  arr.findIndex(i => i.json.id === item.json.id) === idx\n);\n\nconst events = calItems\n  .filter(item => item.json.start?.dateTime)\n  .map((item, idx) => {\nconst start = parseLocalTime(item.json.start.dateTime, item.json.start.timeZone);\nconst end   = parseLocalTime(item.json.end.dateTime,   item.json.end.timeZone);\n    return {\n      title:      item.json.summary || '(No title)',\n      start_hour: start.hours,\n      start_min:  start.minutes,\n      end_hour:   end.hours,\n      end_min:    end.minutes,\n      color:      colors[idx % colors.length],\n    };\n  })\n  .filter(ev => ev.start_hour >= 7 && ev.start_hour < 20)\n  .sort((a, b) => (a.start_hour * 60 + a.start_min) - (b.start_hour * 60 + b.start_min));\n\n\nconst todoItems = $('HTTP Request').first().json\n  .service_response?.['todo.tasks']?.items ?? [];\n\nconst todos = todoItems\n  .filter(item => item.status !== 'completed')\n  .map(item => ({\n    text:     item.summary,\n    done:     item.status === 'completed',\n    priority: false,\n  }));\n\nreturn [{\n  json: {\n    weather_condition: condition.state || '',\n    weather_high:      Math.round(parseFloat(high.state)) || '',\n    weather_low:       Math.round(parseFloat(low.state))  || '',\n    events,\n    todos: todos,\n  }\n}];"
+      },
+      "id": "8edfee97-05d4-44fd-9255-8085cd4fd95a",
+      "name": "Build Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        416
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every day at 6am": {
+      "main": [
+        [
+          {
+            "node": "HA: Weather Condition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HA: Weather Condition": {
+      "main": [
+        [
+          {
+            "node": "HA: Weather High",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HA: Weather High": {
+      "main": [
+        [
+          {
+            "node": "HA: Weather Low",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HA: Weather Low": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar: Today",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar: Today": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar: Family",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate PDF": {
+      "main": [
+        [
+          {
+            "node": "Upload to reMarkable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to reMarkable": {
+      "main": [
+        [
+          {
+            "node": "Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Result": {
+      "main": [
+        [
+          {
+            "node": "Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar: Family": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Build Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Generate PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Payload": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "timezone": "America/Chicago",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "43c6f78c-c1ad-4d56-be48-59e870b70bcd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f076be59fa566243c7e7b2e5f3639810051bf8041acd97de0be14d34a75bda6c"
+  },
+  "id": "NPgB32ehsnPgv1pH",
+  "tags": []
+}

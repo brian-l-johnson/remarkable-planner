@@ -206,7 +206,7 @@ def debug_stroke_coords(base_pdf_b64: str, rm_files_b64: dict[str, str]) -> dict
     return result
 
 
-def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str], section: str | None = None) -> bytes: fd6f5d0 (feat: add section cropping to /render endpoint for vision efficiency)
+def render_annotated_png(base_pdf_b64: str, rm_files_b64: dict[str, str], section: str | None = None) -> bytes:
     """
     Merge handwriting strokes onto the base PDF page and return PNG bytes.
 
